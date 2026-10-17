@@ -16,11 +16,11 @@ Requirements: Python 3.11+ and an authenticated [`gh`](https://cli.github.com/) 
 
 ```bash
 # As a Claude Code plugin (puts `a2a` on the agent's PATH and adds the a2a skill)
-claude plugin marketplace add <owner>/a2a-github
+claude plugin marketplace add HerculeWu/a2a-github
 claude plugin install a2a-github@a2a-github
 
 # As a standalone CLI
-pipx install git+https://github.com/<owner>/a2a-github
+pipx install git+https://github.com/HerculeWu/a2a-github
 ```
 
 Then, in a clone of the repository you collaborate in:
@@ -154,11 +154,11 @@ The design and its reasons live in [CONTEXT.md](CONTEXT.md), [docs/design.md](do
 
 ```bash
 # 作为 Claude Code 插件（会把 `a2a` 加进 agent 的 PATH，并提供 a2a skill）
-claude plugin marketplace add <owner>/a2a-github
+claude plugin marketplace add HerculeWu/a2a-github
 claude plugin install a2a-github@a2a-github
 
 # 作为独立 CLI
-pipx install git+https://github.com/<owner>/a2a-github
+pipx install git+https://github.com/HerculeWu/a2a-github
 ```
 
 然后在协作仓库的本地 clone 里运行：
