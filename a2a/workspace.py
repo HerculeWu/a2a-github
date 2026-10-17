@@ -44,6 +44,12 @@ class NotifyConfig:
     path: str | None = None
     command: list[str] | None = None
 
+    def require(self, sink: str) -> None:
+        if sink == "file" and not self.path:
+            raise ConfigError('sink "file" needs notify.path in config.toml')
+        if sink == "command" and not self.command:
+            raise ConfigError('sink "command" needs notify.command in config.toml')
+
 
 @dataclass
 class Config:
@@ -185,18 +191,16 @@ def load_config(path: Path) -> tuple[Config, list[str]]:
     if sink not in SINKS:
         raise ConfigError(f"notify.sink must be one of {', '.join(SINKS)}, got {sink!r}")
     notify = NotifyConfig(sink=sink)
-    if sink == "file":
-        path_value = n.get("path")
-        if not isinstance(path_value, str) or not path_value:
-            raise ConfigError('notify.sink = "file" needs notify.path')
-        notify.path = path_value
-    if sink == "command":
-        command = n.get("command")
-        if isinstance(command, str):
-            command = shlex.split(command)
+    if "path" in n:
+        if not isinstance(n["path"], str) or not n["path"]:
+            raise ConfigError("notify.path must be a non-empty string")
+        notify.path = n["path"]
+    if "command" in n:
+        command = shlex.split(n["command"]) if isinstance(n["command"], str) else n["command"]
         if not command or not isinstance(command, list) or not all(isinstance(c, str) for c in command):
-            raise ConfigError('notify.sink = "command" needs notify.command (a list or a string)')
+            raise ConfigError("notify.command must be a non-empty list or string")
         notify.command = command
+    notify.require(sink)
 
     cfg = Config(repo=repo, me=me, login=login, filters=filters, watch=WatchConfig(interval), notify=notify)
     warnings = []

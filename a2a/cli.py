@@ -16,6 +16,7 @@ from a2a.sign import sign
 from a2a.fetch import fetch_issue, fetch_pr
 from a2a.timeutil import parse_duration, parse_iso
 from a2a.watch import run_daemon, run_round, watch_lock
+from a2a.notify import NotifyError, notify
 from a2a.state import StateStore, compact, format_value, parse_value
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
@@ -130,11 +131,19 @@ def cmd_watch(app: App, args) -> Result:
     backfill = parse_duration(args.backfill) if args.backfill else timedelta(0)
     try:
         with watch_lock(ws):
+            def after_round(result):
+                if args.notify and result.new:
+                    out = notify(ws, cfg)
+                    if out.sent and out.sink == "stdout" and not getattr(args, "json", False):
+                        print(out.digest, file=sys.stderr)
+
             if args.once:
                 result = run_round(ws, cfg, app.gh, backfill=backfill, warn=app.warn)
+                after_round(result)
                 return Result(text=str(len(result.new)), data={"new": result.new})
 
             def on_round(result):
+                after_round(result)
                 if result.new:
                     emit(Result(text=str(len(result.new)), data={"new": result.new}), getattr(args, "json", False))
                     sys.stdout.flush()
@@ -157,6 +166,12 @@ def cmd_fetch(app: App, args) -> Result:
         out = fetch_pr(app.gh, cfg.repo, args.number, files=args.files, diff=args.diff is not None,
                        paths=args.diff or [], **common)
     return Result(text=out.text, data=out.data)
+
+
+def cmd_notify(app: App, args) -> Result:
+    out = notify(app.workspace(), app.config(), sink=args.sink, force=args.force)
+    data = {"sent": out.sent, "sink": out.sink, "unread": out.unread, "digest": out.digest}
+    return Result(text=out.digest if out.sent and out.sink == "stdout" else None, data=data)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -210,6 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--once", action="store_true", help="run a single round and exit (for cron and tests)")
     p.add_argument("--interval", type=int, metavar="SEC", help="seconds between rounds (default: watch.interval)")
     p.add_argument("--backfill", metavar="DURATION", help="on the first run, also consider activity this far back (e.g. 7d)")
+    p.add_argument("--notify", action="store_true", help="run `a2a notify` after each round that added entries")
     p.set_defaults(func=cmd_watch)
 
     p = sub.add_parser("fetch", parents=[common], help="read one issue or PR as compact Markdown")
@@ -225,6 +241,11 @@ def build_parser() -> argparse.ArgumentParser:
             g.add_argument("--files", action="store_true", help="list changed files with +/- counts")
             g.add_argument("--diff", nargs="*", metavar="PATH", help="full patch, optionally only for these paths")
     p.set_defaults(func=cmd_fetch)
+
+    p = sub.add_parser("notify", parents=[common], help="send a one-line digest of new unread entries to the sink")
+    p.add_argument("--force", action="store_true", help="send even if nothing new arrived since the last digest")
+    p.add_argument("--sink", choices=("stdout", "file", "command"), help="override notify.sink for this run")
+    p.set_defaults(func=cmd_notify)
 
     return parser
 
@@ -243,7 +264,7 @@ def main(argv: list[str] | None = None, gh_factory: Callable[[], Any] = make_gh)
     app = App(args, gh_factory)
     try:
         result = args.func(app, args)
-    except (ConfigError, GhError, InboxError, ValueError) as e:
+    except (ConfigError, GhError, InboxError, NotifyError, ValueError) as e:
         for w in app.warnings:
             print(f"a2a: warning: {w}", file=sys.stderr)
         print(f"a2a: error: {e}", file=sys.stderr)
