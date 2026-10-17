@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from a2a import __version__
 from a2a.gh import GhError, make_gh
+from a2a.inbox import InboxError, InboxStore, format_lines
 from a2a.state import StateStore, compact, format_value, parse_value
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
@@ -92,6 +93,26 @@ def cmd_state(app: App, args) -> Result:
     return Result(text="\n".join(f"{k}={compact(v)}" for k, v in sorted(data.items())), data=data)
 
 
+def inbox_store(app: App) -> InboxStore:
+    ws = app.workspace()
+    return InboxStore(ws.inbox_path, ws.acks_path)
+
+
+def cmd_inbox(app: App, args) -> Result:
+    store = inbox_store(app)
+    if args.inbox_cmd == "list":
+        types = [t.strip() for t in args.type.split(",") if t.strip()] if args.type else None
+        entries = store.list(unread=args.unread, since=args.since, types=types, limit=args.limit)
+        return Result(text="\n".join(format_lines(entries)), data=entries)
+    if args.inbox_cmd == "count":
+        n = store.count(unread=args.unread)
+        return Result(text=str(n), data={"count": n})
+    if not args.all and not args.targets:
+        app.args._parser_ack.error("give entry ids, #numbers, or --all")
+    new = store.ack(args.targets, all_=args.all)
+    return Result(text=f"acked {len(new)}", data={"acked": new})
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS, help="machine-readable output")
@@ -120,6 +141,21 @@ def build_parser() -> argparse.ArgumentParser:
     ssub.add_parser("dump", parents=[common], help="print every key")
     p.set_defaults(func=cmd_state)
 
+    p = sub.add_parser("inbox", parents=[common], help="list, count and acknowledge matched activity")
+    isub = p.add_subparsers(dest="inbox_cmd", required=True, metavar="ACTION")
+    li = isub.add_parser("list", parents=[common], help="one line per entry, oldest first")
+    li.add_argument("--unread", action="store_true", help="only entries not yet acked")
+    li.add_argument("--since", metavar="ISO", help="only entries at or after this UTC time")
+    li.add_argument("--type", metavar="T[,T]", help="only these activity types")
+    li.add_argument("--limit", type=int, metavar="N", help="only the last N entries")
+    co = isub.add_parser("count", parents=[common], help="print the number of entries")
+    co.add_argument("--unread", action="store_true", help="count only unread entries")
+    ack = isub.add_parser("ack", parents=[common], help="mark entries read")
+    ack.add_argument("targets", nargs="*", metavar="ID|#N", help="entry id, or #N for every entry of thread N")
+    ack.add_argument("--all", action="store_true", help="mark every entry read")
+    ack.set_defaults(_parser_ack=ack)
+    p.set_defaults(func=cmd_inbox)
+
     return parser
 
 
@@ -137,7 +173,7 @@ def main(argv: list[str] | None = None, gh_factory: Callable[[], Any] = make_gh)
     app = App(args, gh_factory)
     try:
         result = args.func(app, args)
-    except (ConfigError, GhError, ValueError) as e:
+    except (ConfigError, GhError, InboxError, ValueError) as e:
         for w in app.warnings:
             print(f"a2a: warning: {w}", file=sys.stderr)
         print(f"a2a: error: {e}", file=sys.stderr)
