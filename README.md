@@ -1,0 +1,204 @@
+# a2a-github
+
+[English](#english) · [中文](#中文)
+
+---
+
+## English
+
+Humans and agents collaborate through one GitHub repository: issues to talk, PRs to ship code. `a2a` tells each participant **what new activity concerns them**, without polling full issue threads into an agent's context.
+
+It is a role-agnostic capability layer, a set of independent CLI primitives. It has no built-in idea of routers, workers or who should handle what. That policy lives in your config and in how you compose the commands.
+
+Requirements: Python 3.11+ and an authenticated [`gh`](https://cli.github.com/) CLI. There are no other dependencies.
+
+### Install
+
+```bash
+# As a Claude Code plugin (puts `a2a` on the agent's PATH and adds the a2a skill)
+claude plugin marketplace add <owner>/a2a-github
+claude plugin install a2a-github@a2a-github
+
+# As a standalone CLI
+pipx install git+https://github.com/<owner>/a2a-github
+```
+
+Then, in a clone of the repository you collaborate in:
+
+```bash
+a2a init                 # writes .a2a/config.toml (repo and login detected via gh)
+a2a watch --once         # first round: starts observing from now
+```
+
+### Primitives
+
+**`a2a watch [--once] [--interval SEC] [--backfill 7d] [--notify]`**: polls four repository streams: issues and PRs, issue comments, review comments, and issue events. It also reads reviews on PRs that changed. Each stream is polled with `If-None-Match`, so a quiet repository costs four free `304` responses per round. Activity that matches your filter rules is appended to `.a2a/inbox.jsonl`. Seen ids and per-stream cursors make repeated or restarted rounds idempotent. The first run does not import history unless you pass `--backfill`. `--once` runs one round, for cron and scripts; without it, `watch` keeps running and honours GitHub's `X-Poll-Interval`.
+
+**`a2a inbox list [--unread] [--since ISO] [--type T[,T]] [--limit N]` · `inbox ack <id|#N>… | --all` · `inbox count [--unread]`**: one line per entry, such as `#123  comment   alice  2026-10-17T17:40  can we change…`. `ack #N` marks every entry of thread N as read. `count` prints just a number. Read state is stored apart from the append-only inbox, so acking never races the watcher.
+
+**`a2a fetch issue N [--since ISO] [--comments-only] [--max-chars N]`** and **`a2a fetch pr N [… | --files | --diff [PATH…]]`**: one thread as compact Markdown. `--since` keeps only later comments. `--max-chars` keeps the header and the newest comments that fit, and reports how many older ones it omitted. `fetch pr` interleaves comments and reviews, including inline review notes. `--files` lists `+add -del` per file, and `--diff` prints the patch, optionally only for some paths.
+
+**`a2a notify [--force] [--sink stdout|file|command]`**: when unread entries arrived since the last digest, it sends one line such as `inbox: 3 unread — #123 comment(alice), #130 assigned, #131 review(bob)` to the configured sink. `file` appends to a path. `command` pipes the line to any program's stdin, and that is the extension point for wiring a2a into any agent or chat tool.
+
+**`a2a state get|set|delete|dump`**: a flat JSON key-value store for your own bookkeeping, such as read cursors or claimed threads. Writes are atomic and locked, so concurrent writers never lose keys. `set k v` stores JSON when `v` parses as JSON and a string otherwise; `--raw` always stores a string.
+
+**`a2a sign [--as NAME]`**: appends your signature to a body read from stdin, for example `echo "On it." | a2a sign | gh issue comment 12 -F -`. When several agents share one GitHub account (say, one human running many agents), the signature is how the watcher attributes activity to the right participant. It also lets each agent ignore its own messages.
+
+Every command takes `--json` and `--dir` (or `A2A_DIR`) to choose the workspace. Without either, the nearest `.a2a/` upward is used.
+
+### Configuration (`.a2a/config.toml`)
+
+```toml
+repo = "org/repo"
+login = "my-login"     # the account gh is authenticated as
+me = "my-login"        # who this workspace acts for; an agent name when the login is shared
+
+[filters]              # OR-combined; each entry records matched_rules
+assignee = true        # threads assigned to me, and assignments / review requests for me
+mentions = true        # @me in the text (plus mention_aliases)
+mention_aliases = []
+participated = true    # threads I opened, commented on or reviewed
+labels = ["pin:my-login"]
+title_regex = ""
+body_regex = ""
+ignore_self = true     # exclusion: never deliver my own activity
+exclude_authors = []   # exclusion: globs such as "*[bot]"
+
+[watch]
+interval = 60
+
+[notify]
+sink = "file"          # stdout | file | command
+path = ".a2a/notify.log"
+# command = ["notify-send", "a2a"]
+```
+
+### Composition examples
+
+**1. Resident router.** A router agent watches everything new and hands work out with labels. Worker agents watch only their own label.
+
+```bash
+# router workspace: every new thread concerns it
+A2A_DIR=.a2a-router a2a init --me router         # then set  title_regex = "."
+A2A_DIR=.a2a-router a2a watch --notify &         # [notify] sink = "command" wakes the router
+
+# the router's policy is plain shell; a2a decides nothing
+for n in $(A2A_DIR=.a2a-router a2a inbox list --unread --type issue_opened,pr_opened --json | jq -r '.[].number'); do
+  gh issue edit "$n" --add-label "pin:agent-x"    # pick an owner however you like
+  A2A_DIR=.a2a-router a2a inbox ack "#$n"
+done
+
+# each worker: labels = ["pin:agent-x"]
+A2A_DIR=.a2a-agent-x a2a init --me agent-x
+```
+
+**2. Solo agent.** One agent with its own workspace, woken by cron, which reads only what it needs.
+
+```bash
+# crontab: */5 * * * *  cd /work/repo && a2a watch --once --notify
+a2a inbox list --unread
+a2a fetch issue 42 --since "$(a2a state get 'read:#42')" --max-chars 4000
+printf 'Fixed in #43.' | a2a sign | gh issue comment 42 -F -
+a2a state set 'read:#42' "$(date -u +%FT%TZ)"
+a2a inbox ack '#42'
+```
+
+To surface the digest inside Claude Code on every prompt, add a `UserPromptSubmit` hook to your settings. This needs `a2a` on PATH, e.g. via pipx:
+
+```json
+{ "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": "a2a notify --sink stdout" } ] } ] } }
+```
+
+**3. Human, read-only.** A person keeps an eye on the repository from a terminal.
+
+```bash
+a2a init                                   # [notify] sink = "command", command = ["notify-send", "a2a"]
+a2a watch --notify                         # leave running in a tmux pane
+a2a inbox list --unread                    # what's new for me
+a2a fetch pr 17 --files                    # glance at a PR without opening the browser
+a2a inbox ack --all
+```
+
+### Files
+
+| file | written by | purpose |
+|---|---|---|
+| `config.toml` | you | repo, identity, filters, sinks |
+| `inbox.jsonl` | watch (append-only) | matched activity |
+| `acks.json` | inbox ack | which entries are read |
+| `seen.json` / `etags.json` | watch | dedup cursors / conditional-request ETags |
+| `state.json` | state | your key-value bookkeeping |
+| `notify.json` | notify | last announced entry |
+
+### Development
+
+```bash
+uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -e '.[dev]'
+.venv/bin/pytest --cov=a2a                       # unit, fake-gh, file, CLI layers
+A2A_TEST_REPO=org/sandbox .venv/bin/pytest -m smoke   # optional: against a real sandbox repo
+```
+
+The design and its reasons live in [CONTEXT.md](CONTEXT.md), [docs/design.md](docs/design.md) and [docs/adr/](docs/adr/).
+
+---
+
+## 中文
+
+多个人和多个 agent 通过同一个 GitHub 仓库协作：issue 用来沟通，PR 用来提交代码。`a2a` 告诉每个参与者**有哪些新动态和自己有关**，而不需要反复轮询、把整条 issue 灌进 agent 的上下文。
+
+它是一个与角色无关的能力层：一组彼此独立的 CLI 原语。它不知道什么是"路由""执行者"，也不决定"谁该处理什么"。这些策略由你写在配置里，或者通过组合命令来实现。
+
+依赖：Python 3.11+，以及已登录的 [`gh`](https://cli.github.com/) CLI。除此之外没有任何依赖。
+
+### 安装
+
+```bash
+# 作为 Claude Code 插件（会把 `a2a` 加进 agent 的 PATH，并提供 a2a skill）
+claude plugin marketplace add <owner>/a2a-github
+claude plugin install a2a-github@a2a-github
+
+# 作为独立 CLI
+pipx install git+https://github.com/<owner>/a2a-github
+```
+
+然后在协作仓库的本地 clone 里运行：
+
+```bash
+a2a init                 # 生成 .a2a/config.toml（repo 和 login 通过 gh 自动探测）
+a2a watch --once         # 第一轮：从现在开始观察
+```
+
+### 原语
+
+**`a2a watch [--once] [--interval SEC] [--backfill 7d] [--notify]`**：轮询仓库的四个数据流：issue 和 PR、issue 评论、PR 行内评论、issue 事件。对有变化的 PR，还会读取它的 review。每个数据流都带 `If-None-Match` 发条件请求，仓库没有动静时，每轮只花 4 个不计限额的 `304`。命中过滤规则的动态会追加写入 `.a2a/inbox.jsonl`。靠已见 id 和每个数据流的游标，重复运行或重启都不会产生重复条目。首次运行不会导入历史，除非加 `--backfill`。`--once` 只跑一轮，适合 cron 和脚本；不加时常驻运行，并遵守 GitHub 返回的 `X-Poll-Interval`。
+
+**`a2a inbox list [--unread] [--since ISO] [--type T[,T]] [--limit N]` · `inbox ack <id|#N>… | --all` · `inbox count [--unread]`**：每个条目一行，例如 `#123  comment   alice  2026-10-17T17:40  能不能改成…`。`ack #N` 把 thread N 的所有条目标为已读。`count` 只输出一个数字。已读状态和只追加的 inbox 分开存储，所以 ack 永远不会和 watcher 抢着写文件。
+
+**`a2a fetch issue N [--since ISO] [--comments-only] [--max-chars N]`** 和 **`a2a fetch pr N [… | --files | --diff [PATH…]]`**：把一个 thread 输出为紧凑的 Markdown。`--since` 只保留该时间之后的评论。`--max-chars` 保留表头和放得下的最新评论，并注明省略了多少条较早的评论。`fetch pr` 把评论和 review（含行内评论）按时间排在一起。`--files` 列出每个文件的增删行数，`--diff` 输出补丁，可以只看指定路径。
+
+**`a2a notify [--force] [--sink stdout|file|command]`**：只要上次摘要之后有新的未读条目，就把一行摘要发到配置的通道，例如 `inbox: 3 unread — #123 comment(alice), #130 assigned, #131 review(bob)`。`file` 通道追加写入文件。`command` 通道把这一行通过 stdin 交给任意程序，这就是把 a2a 接到任何 agent 或聊天工具上的扩展点。
+
+**`a2a state get|set|delete|dump`**：扁平的 JSON 键值存储，用来记录你自己的状态，比如读到哪了、认领了哪些 thread。写入是原子的，并且加了锁，多个进程同时写也不会丢 key。`set k v` 时，`v` 能按 JSON 解析就存 JSON，否则存字符串；`--raw` 强制存字符串。
+
+**`a2a sign [--as NAME]`**：从 stdin 读入正文，追加你的签名后输出，例如 `echo "On it." | a2a sign | gh issue comment 12 -F -`。当多个 agent 共用一个 GitHub 账号时（比如一个人同时开很多 agent），watcher 靠签名把动态归到正确的参与者名下，每个 agent 也靠它忽略自己发的消息。
+
+所有命令都支持 `--json`，也都支持用 `--dir`（或环境变量 `A2A_DIR`）指定 workspace。两者都没给时，向上查找最近的 `.a2a/`。
+
+### 配置
+
+配置项说明见上方英文部分的 `config.toml` 示例。要点：
+- `me` 是这个 workspace 代表谁。等于 `login` 时是独立账号模式；不等时是共享账号模式，此时靠签名识别身份。
+- 各条过滤规则是 OR 关系，每个条目都会记录命中了哪些规则（`matched_rules`）。
+- `ignore_self` 和 `exclude_authors` 是排除规则，优先级高于任何命中。
+
+### 组合示例
+
+**1. 常驻路由型**：一个路由 agent 关注所有新 thread，用标签把工作分派出去；执行 agent 只关注自己的标签。命令见上方英文部分的示例 1。路由策略全写在那段 shell 循环里，a2a 本身不做任何决定。
+
+**2. 单兵型**：一个 agent 有自己的 workspace，由 cron 唤醒，并且只读它需要的那个 thread。命令见上方英文部分的示例 2，其中也给出了把摘要注入 Claude Code 的 `UserPromptSubmit` hook 配置。
+
+**3. 纯人工查看型**：一个人在终端里关注仓库动态：常驻运行 `a2a watch --notify` 弹桌面通知，用 `a2a inbox list --unread` 查看新动态，用 `a2a fetch pr 17 --files` 快速浏览 PR。命令见上方英文部分的示例 3。
+
+### 开发
+
+开发和测试命令见上方英文部分。设计说明和决策原因见 [CONTEXT.md](CONTEXT.md)、[docs/design.md](docs/design.md) 和 [docs/adr/](docs/adr/)。

@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""Plugin entry point: run the bundled a2a package without installing it."""
+
+import os
+import sys
+
+if sys.version_info < (3, 11):
+    sys.exit(f"a2a: error: Python 3.11+ is required, found {sys.version.split()[0]}")
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from a2a.cli import main  # noqa: E402
+
+raise SystemExit(main())

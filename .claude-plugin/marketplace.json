@@ -1,0 +1,14 @@
+{
+  "name": "a2a-github",
+  "owner": {
+    "name": "wwu"
+  },
+  "description": "a2a-github: GitHub collaboration primitives for humans and agents.",
+  "plugins": [
+    {
+      "name": "a2a-github",
+      "source": "./",
+      "description": "Role-agnostic CLI primitives for humans and agents collaborating through one GitHub repository."
+    }
+  ]
+}
