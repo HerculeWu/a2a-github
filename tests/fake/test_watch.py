@@ -179,3 +179,12 @@ def test_watch_lock_is_exclusive(ws):
         with pytest.raises(BlockingIOError):
             with watch_lock(ws):
                 pass
+
+
+def test_seen_stays_bounded_even_when_a_stream_is_quiet():
+    from a2a.watch import Seen
+
+    seen = Seen.first_run(NOON - timedelta(days=30), NOON - timedelta(days=30))
+    seen.cursors.update(issues=NOON, comments=NOON, events=NOON, reviews=NOON)  # review_comments stays quiet
+    seen.recent = {"c-1": "2026-10-16T12:00:00Z", "c-2": "2026-10-17T11:55:00Z", "e-3": "2026-10-01T00:00:00Z"}
+    assert seen.to_json()["recent"] == {"c-2": "2026-10-17T11:55:00Z"}

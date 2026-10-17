@@ -46,6 +46,10 @@ def stream_urls(repo: str) -> dict[str, str]:
 ORDER_KEY = {"issues": "updated_at", "comments": "updated_at", "review_comments": "updated_at", "events": "created_at"}
 
 
+# Inbox id prefix -> the stream whose cursor bounds it.
+ID_STREAM = {"i": "issues", "c": "comments", "e": "events", "r": "reviews"}
+
+
 @dataclass
 class RoundResult:
     new: list[dict] = field(default_factory=list)
@@ -75,8 +79,12 @@ class Seen:
         return a.ts >= self.floor(stream) and a.id not in self.recent
 
     def to_json(self) -> dict:
-        horizon = min(self.cursors.values()) - SLACK
-        recent = {i: ts for i, ts in self.recent.items() if parse_iso(ts) >= horizon}
+        # An id only matters while it is at or above its own stream's floor.
+        recent = {
+            i: ts
+            for i, ts in self.recent.items()
+            if parse_iso(ts) >= self.floor(ID_STREAM.get(i.split("-", 1)[0], "issues"))
+        }
         return {
             "version": 1,
             "initialized_at": self.initialized_at,
