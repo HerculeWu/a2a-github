@@ -11,6 +11,7 @@ from typing import Any, Callable
 from a2a import __version__
 from a2a.gh import GhError, make_gh
 from a2a.inbox import InboxError, InboxStore, format_lines
+from a2a.sign import sign
 from a2a.state import StateStore, compact, format_value, parse_value
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
@@ -113,6 +114,12 @@ def cmd_inbox(app: App, args) -> Result:
     return Result(text=f"acked {len(new)}", data={"acked": new})
 
 
+def cmd_sign(app: App, args) -> Result:
+    name = args.as_name or app.config().me
+    body = sign(sys.stdin.read(), name)
+    return Result(text=body, data={"body": body})
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS, help="machine-readable output")
@@ -155,6 +162,10 @@ def build_parser() -> argparse.ArgumentParser:
     ack.add_argument("--all", action="store_true", help="mark every entry read")
     ack.set_defaults(_parser_ack=ack)
     p.set_defaults(func=cmd_inbox)
+
+    p = sub.add_parser("sign", parents=[common], help="append your signature to a body read from stdin")
+    p.add_argument("--as", dest="as_name", metavar="NAME", help="sign as NAME (default: me from config)")
+    p.set_defaults(func=cmd_sign)
 
     return parser
 
