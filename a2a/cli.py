@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from a2a import __version__
 from a2a.gh import GhError, make_gh
+from a2a.state import StateStore, compact, format_value, parse_value
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
 
@@ -73,6 +74,24 @@ def cmd_init(app: App, args) -> Result:
     return Result(text=f"initialised {target} (repo {repo}, me {me})", data=data)
 
 
+def cmd_state(app: App, args) -> Result:
+    store = StateStore(app.workspace().state_path)
+    if args.state_cmd == "get":
+        try:
+            value = store.get(args.key)
+        except KeyError:
+            return Result(code=1)
+        return Result(text=format_value(value), data=value)
+    if args.state_cmd == "set":
+        value = parse_value(args.value, raw=args.raw)
+        store.set(args.key, value)
+        return Result(data={"key": args.key, "value": value})
+    if args.state_cmd == "delete":
+        return Result(data={"deleted": store.delete(args.key)})
+    data = store.dump()
+    return Result(text="\n".join(f"{k}={compact(v)}" for k, v in sorted(data.items())), data=data)
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS, help="machine-readable output")
@@ -87,6 +106,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--me", help="who this workspace acts for (default: the gh login)")
     p.add_argument("--force", action="store_true", help="overwrite an existing config")
     p.set_defaults(func=cmd_init)
+
+    p = sub.add_parser("state", parents=[common], help="flat JSON key-value store for your own bookkeeping")
+    ssub = p.add_subparsers(dest="state_cmd", required=True, metavar="ACTION")
+    g = ssub.add_parser("get", parents=[common], help="print a value (exit 1 if missing)")
+    g.add_argument("key")
+    st = ssub.add_parser("set", parents=[common], help="store a value: JSON if it parses, else a string")
+    st.add_argument("key")
+    st.add_argument("value")
+    st.add_argument("--raw", action="store_true", help="always store VALUE as a string")
+    d = ssub.add_parser("delete", parents=[common], help="remove a key (no error if absent)")
+    d.add_argument("key")
+    ssub.add_parser("dump", parents=[common], help="print every key")
+    p.set_defaults(func=cmd_state)
 
     return parser
 
