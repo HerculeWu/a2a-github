@@ -1,0 +1,3 @@
+# Activities are deduplicated by immutable GitHub ids plus per-stream cursors
+
+The original spec keyed Seen on `(type, id, updated_at)`. An issue's `updated_at` moves on every comment, label and edit, so that key turns one comment into several Inbox Entries and lets `seen.json` grow without bound. Instead, each Activity is keyed by an id GitHub never reuses (comment id, issue-event id, review id, the issue id for `*_opened`). Each endpoint keeps a high-water cursor, and Seen only retains ids near that cursor, to resolve ties at the same timestamp. A consequence is that edits are not Activities: an edited comment that newly @-mentions Me is not delivered.

@@ -1,0 +1,3 @@
+# The gh CLI is the only GitHub transport, behind one GhClient seam
+
+All GitHub access goes through the `gh` CLI via a single `GhClient` class, rather than calling the REST API with a token directly. This reuses whatever auth the participant already has (`gh auth`), avoids storing tokens, and gives tests one injectable seam. Consequences: every call costs a subprocess, response headers (ETag, Link, status) must be read via `gh api -i` and parsed by hand, and `gh api` exits non-zero on `304 Not Modified` (verified with gh 2.45: exit 1, stderr `gh: HTTP 304`), so status must be taken from the response status line, never from the exit code.
