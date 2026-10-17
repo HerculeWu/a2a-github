@@ -1,0 +1,3 @@
+{
+ "pr diff 3 --repo org/repo": "diff --git a/a2a/fetch.py b/a2a/fetch.py\n--- a/a2a/fetch.py\n+++ b/a2a/fetch.py\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/tests/test_retry.py b/tests/test_retry.py\nnew file mode 100644\n--- /dev/null\n+++ b/tests/test_retry.py\n@@ -0,0 +1 @@\n+def test(): pass\n"
+}

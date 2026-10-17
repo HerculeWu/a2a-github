@@ -1,0 +1,199 @@
+{
+ "repos/org/repo/issues/2": {
+  "body": {
+   "id": 1002,
+   "number": 2,
+   "title": "Crash on empty config",
+   "user": {
+    "login": "alice"
+   },
+   "body": "Steps to reproduce:\n1. empty config\n2. boom",
+   "labels": [
+    {
+     "name": "bug"
+    }
+   ],
+   "assignees": [
+    {
+     "login": "me-bot"
+    }
+   ],
+   "state": "open",
+   "created_at": "2026-10-17T10:10:00Z",
+   "updated_at": "2026-10-17T10:40:00Z",
+   "html_url": "https://github.com/org/repo/issues/2"
+  }
+ },
+ "repos/org/repo/issues/2/comments?per_page=100": {
+  "body": [
+   {
+    "id": 201,
+    "user": {
+     "login": "alice"
+    },
+    "body": "Any update on this?",
+    "created_at": "2026-10-17T10:15:00Z",
+    "updated_at": "2026-10-17T10:15:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/2",
+    "html_url": "https://github.com/org/repo/issues/2#issuecomment-201"
+   },
+   {
+    "id": 202,
+    "user": {
+     "login": "me-bot"
+    },
+    "body": "On it.\n\n<sub>— agent-x</sub>\n<!-- a2a:from=agent-x -->",
+    "created_at": "2026-10-17T10:20:00Z",
+    "updated_at": "2026-10-17T10:20:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/2",
+    "html_url": "https://github.com/org/repo/issues/2#issuecomment-202"
+   }
+  ],
+  "next": "repositories/1/issues/2/comments?per_page=100&page=2"
+ },
+ "repositories/1/issues/2/comments?per_page=100&page=2": {
+  "body": [
+   {
+    "id": 203,
+    "user": {
+     "login": "alice"
+    },
+    "body": "Thanks!",
+    "created_at": "2026-10-17T11:00:00Z",
+    "updated_at": "2026-10-17T11:00:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/2",
+    "html_url": "https://github.com/org/repo/issues/2#issuecomment-203"
+   }
+  ]
+ },
+ "repos/org/repo/issues/3": {
+  "body": {
+   "id": 1003,
+   "number": 3,
+   "title": "Add retry to fetcher",
+   "user": {
+    "login": "bob"
+   },
+   "body": "Implements retries.\n\ncc @me-bot",
+   "labels": [],
+   "assignees": [],
+   "state": "open",
+   "created_at": "2026-10-17T10:20:00Z",
+   "updated_at": "2026-10-17T10:50:00Z",
+   "html_url": "https://github.com/org/repo/pull/3",
+   "pull_request": {
+    "url": "https://api.github.com/repos/org/repo/pulls/3"
+   }
+  }
+ },
+ "repos/org/repo/issues/3/comments?per_page=100": {
+  "body": [
+   {
+    "id": 301,
+    "user": {
+     "login": "carol"
+    },
+    "body": "Nice.",
+    "created_at": "2026-10-17T10:30:00Z",
+    "updated_at": "2026-10-17T10:30:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/3",
+    "html_url": "https://github.com/org/repo/issues/3#issuecomment-301"
+   }
+  ]
+ },
+ "repos/org/repo/pulls/3": {
+  "body": {
+   "id": 1003,
+   "number": 3,
+   "title": "Add retry to fetcher",
+   "user": {
+    "login": "bob"
+   },
+   "body": "Implements retries.\n\ncc @me-bot",
+   "labels": [],
+   "assignees": [],
+   "state": "open",
+   "created_at": "2026-10-17T10:20:00Z",
+   "html_url": "https://github.com/org/repo/pull/3",
+   "draft": false,
+   "merged": false,
+   "base": {
+    "ref": "main"
+   },
+   "head": {
+    "ref": "retry"
+   },
+   "additions": 30,
+   "deletions": 4,
+   "changed_files": 2
+  }
+ },
+ "repos/org/repo/pulls/3/reviews?per_page=100": {
+  "body": [
+   {
+    "id": 701,
+    "user": {
+     "login": "dan"
+    },
+    "body": "LGTM @me-bot",
+    "state": "APPROVED",
+    "submitted_at": "2026-10-17T10:50:00Z",
+    "html_url": "https://github.com/org/repo/pull/3#pullrequestreview-701"
+   },
+   {
+    "id": 702,
+    "user": {
+     "login": "dan"
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "submitted_at": "2026-10-17T11:40:00Z",
+    "html_url": "https://github.com/org/repo/pull/3#pullrequestreview-702"
+   },
+   {
+    "id": 703,
+    "user": {
+     "login": "dan"
+    },
+    "body": "draft",
+    "state": "PENDING",
+    "submitted_at": null,
+    "html_url": "https://github.com/org/repo/pull/3#pullrequestreview-703"
+   }
+  ]
+ },
+ "repos/org/repo/pulls/3/comments?per_page=100": {
+  "body": [
+   {
+    "id": 801,
+    "pull_request_review_id": 702,
+    "user": {
+     "login": "dan"
+    },
+    "body": "nit: rename",
+    "path": "fetch.py",
+    "line": 10,
+    "created_at": "2026-10-17T11:40:00Z",
+    "updated_at": "2026-10-17T11:40:00Z",
+    "pull_request_url": "https://api.github.com/repos/org/repo/pulls/3",
+    "html_url": "https://github.com/org/repo/pull/3#discussion_r801"
+   }
+  ]
+ },
+ "repos/org/repo/pulls/3/files?per_page=100": {
+  "body": [
+   {
+    "filename": "a2a/fetch.py",
+    "status": "modified",
+    "additions": 26,
+    "deletions": 4
+   },
+   {
+    "filename": "tests/test_retry.py",
+    "status": "added",
+    "additions": 4,
+    "deletions": 0
+   }
+  ]
+ }
+}

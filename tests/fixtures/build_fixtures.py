@@ -141,12 +141,67 @@ B[f"repos/{REPO}/pulls/3/reviews?per_page=100"] = {"body": reviews3_a + [review(
 B[f"repos/{REPO}/issues/9"] = {"body": i9}
 
 
-def write(name, routes):
+# --- fetch scenario -----------------------------------------------------------
+SIGN = "\n\n<sub>— agent-x</sub>\n<!-- a2a:from=agent-x -->"
+FETCH = {
+    f"repos/{REPO}/issues/2": {"body": {**i2, "body": "Steps to reproduce:\n1. empty config\n2. boom"}},
+    f"repos/{REPO}/issues/2/comments?per_page=100": {
+        "body": [
+            comment(201, 2, "alice", D + "10:15:00Z", "Any update on this?"),
+            comment(202, 2, "me-bot", D + "10:20:00Z", "On it." + SIGN),
+        ],
+        "next": "repositories/1/issues/2/comments?per_page=100&page=2",
+    },
+    "repositories/1/issues/2/comments?per_page=100&page=2": {
+        "body": [comment(203, 2, "alice", D + "11:00:00Z", "Thanks!")]
+    },
+    f"repos/{REPO}/issues/3": {"body": i3},
+    f"repos/{REPO}/issues/3/comments?per_page=100": {"body": [comment(301, 3, "carol", D + "10:30:00Z", "Nice.")]},
+    f"repos/{REPO}/pulls/3": {
+        "body": {
+            **{k: i3[k] for k in ("id", "number", "title", "user", "body", "labels", "assignees", "state", "created_at", "html_url")},
+            "draft": False,
+            "merged": False,
+            "base": {"ref": "main"},
+            "head": {"ref": "retry"},
+            "additions": 30,
+            "deletions": 4,
+            "changed_files": 2,
+        }
+    },
+    f"repos/{REPO}/pulls/3/reviews?per_page=100": {
+        "body": [
+            review(701, 3, "dan", D + "10:50:00Z", "LGTM @me-bot", state="APPROVED"),
+            review(702, 3, "dan", D + "11:40:00Z", ""),
+            {**review(703, 3, "dan", None, "draft"), "state": "PENDING"},
+        ]
+    },
+    f"repos/{REPO}/pulls/3/comments?per_page=100": {
+        "body": [review_comment(801, 3, 702, "dan", D + "11:40:00Z", "fetch.py", "nit: rename")]
+    },
+    f"repos/{REPO}/pulls/3/files?per_page=100": {
+        "body": [
+            {"filename": "a2a/fetch.py", "status": "modified", "additions": 26, "deletions": 4},
+            {"filename": "tests/test_retry.py", "status": "added", "additions": 4, "deletions": 0},
+        ]
+    },
+}
+DIFF = (
+    "diff --git a/a2a/fetch.py b/a2a/fetch.py\n--- a/a2a/fetch.py\n+++ b/a2a/fetch.py\n@@ -1 +1 @@\n-old\n+new\n"
+    "diff --git a/tests/test_retry.py b/tests/test_retry.py\nnew file mode 100644\n--- /dev/null\n"
+    "+++ b/tests/test_retry.py\n@@ -0,0 +1 @@\n+def test(): pass\n"
+)
+
+
+def write(name, routes, commands=None):
     d = HERE / name
     d.mkdir(exist_ok=True)
     (d / "routes.json").write_text(json.dumps(routes, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    if commands:
+        (d / "commands.json").write_text(json.dumps(commands, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
     write("watch_a", A)
     write("watch_b", B)
+    write("fetch", FETCH, {f"pr diff 3 --repo {REPO}": DIFF})

@@ -13,7 +13,8 @@ from a2a import __version__
 from a2a.gh import GhError, make_gh
 from a2a.inbox import InboxError, InboxStore, format_lines
 from a2a.sign import sign
-from a2a.timeutil import parse_duration
+from a2a.fetch import fetch_issue, fetch_pr
+from a2a.timeutil import parse_duration, parse_iso
 from a2a.watch import run_daemon, run_round, watch_lock
 from a2a.state import StateStore, compact, format_value, parse_value
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
@@ -144,6 +145,20 @@ def cmd_watch(app: App, args) -> Result:
         raise ConfigError(f"another `a2a watch` is already running for {ws.root}") from e
 
 
+def cmd_fetch(app: App, args) -> Result:
+    cfg = app.config()
+    since = parse_iso(args.since) if args.since else None
+    if args.max_chars is not None and args.max_chars < 1:
+        raise ValueError("--max-chars must be positive")
+    common = dict(since=since, comments_only=args.comments_only, max_chars=args.max_chars)
+    if args.kind == "issue":
+        out = fetch_issue(app.gh, cfg.repo, args.number, **common)
+    else:
+        out = fetch_pr(app.gh, cfg.repo, args.number, files=args.files, diff=args.diff is not None,
+                       paths=args.diff or [], **common)
+    return Result(text=out.text, data=out.data)
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS, help="machine-readable output")
@@ -196,6 +211,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--interval", type=int, metavar="SEC", help="seconds between rounds (default: watch.interval)")
     p.add_argument("--backfill", metavar="DURATION", help="on the first run, also consider activity this far back (e.g. 7d)")
     p.set_defaults(func=cmd_watch)
+
+    p = sub.add_parser("fetch", parents=[common], help="read one issue or PR as compact Markdown")
+    fsub = p.add_subparsers(dest="kind", required=True, metavar="KIND")
+    for kind, what in (("issue", "an issue (or a PR's conversation)"), ("pr", "a pull request with reviews")):
+        fp = fsub.add_parser(kind, parents=[common], help=f"fetch {what}")
+        fp.add_argument("number", type=int)
+        fp.add_argument("--since", metavar="ISO", help="only comments after this UTC time")
+        fp.add_argument("--comments-only", action="store_true", help="omit the opening body")
+        fp.add_argument("--max-chars", type=int, metavar="N", help="fit output into N characters, keeping the newest comments")
+        if kind == "pr":
+            g = fp.add_mutually_exclusive_group()
+            g.add_argument("--files", action="store_true", help="list changed files with +/- counts")
+            g.add_argument("--diff", nargs="*", metavar="PATH", help="full patch, optionally only for these paths")
+    p.set_defaults(func=cmd_fetch)
 
     return parser
 

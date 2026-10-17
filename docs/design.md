@@ -219,10 +219,10 @@ alice · 2026-10-17T17:40Z · labels: a, b · assignees: bob · https://github.c
 
 `a2a fetch pr N [--since] [--comments-only] [--max-chars] [--files | --diff [PATH...]]`:
 - **Default:**
-  - the header adds `base ← head`, draft/merged state, and `+A −D in F files`;
+  - the header adds `base ← head`, draft/merged state, and `+A -D in F files`;
   - the body;
   - then one merged timeline of comments and reviews. A review shows as `### bob · review APPROVED · ts`, followed by its body and its inline comments as `path:line: text`.
-- **`--files`:** the header, then one line per file: `+12 −3  M  path`.
+- **`--files`:** the header, then one line per file: `+12 -3  M  path`.
 - **`--diff [PATH...]`:** the header, then the full patch from `gh pr diff N`, limited to the given paths, under `--max-chars` (head kept, `[truncated]`).
 
 `--json` emits the structured Thread (`header`, `body`, `comments`/`timeline`, `files`, `diff`, `truncated`).
