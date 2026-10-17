@@ -1,0 +1,3 @@
+{
+  "repo view --json nameWithOwner -q .nameWithOwner": "org/repo\n"
+}

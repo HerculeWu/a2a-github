@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a2a-github"
+version = "0.1.0"
+description = "Role-agnostic CLI primitives for humans and agents collaborating through one GitHub repository"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5"]
+
+[project.scripts]
+a2a = "a2a.cli:main"
+
+[tool.setuptools]
+packages = ["a2a"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["smoke: talks to a real GitHub repository (needs A2A_TEST_REPO)"]
+
+[tool.coverage.run]
+source = ["a2a"]
+patch = ["subprocess"]
+parallel = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

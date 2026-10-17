@@ -1,0 +1,4 @@
+{
+  "user": {"body": {"login": "me-bot"}},
+  "users/taken-name": {"body": {"login": "taken-name"}}
+}
