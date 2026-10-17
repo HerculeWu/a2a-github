@@ -6,12 +6,15 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any, Callable
 
 from a2a import __version__
 from a2a.gh import GhError, make_gh
 from a2a.inbox import InboxError, InboxStore, format_lines
 from a2a.sign import sign
+from a2a.timeutil import parse_duration
+from a2a.watch import run_daemon, run_round, watch_lock
 from a2a.state import StateStore, compact, format_value, parse_value
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
@@ -120,6 +123,27 @@ def cmd_sign(app: App, args) -> Result:
     return Result(text=body, data={"body": body})
 
 
+def cmd_watch(app: App, args) -> Result:
+    ws = app.workspace()
+    cfg = app.config()
+    backfill = parse_duration(args.backfill) if args.backfill else timedelta(0)
+    try:
+        with watch_lock(ws):
+            if args.once:
+                result = run_round(ws, cfg, app.gh, backfill=backfill, warn=app.warn)
+                return Result(text=str(len(result.new)), data={"new": result.new})
+
+            def on_round(result):
+                if result.new:
+                    emit(Result(text=str(len(result.new)), data={"new": result.new}), getattr(args, "json", False))
+                    sys.stdout.flush()
+
+            run_daemon(ws, cfg, app.gh, args.interval or cfg.watch.interval, on_round, backfill=backfill)
+            return Result()
+    except BlockingIOError as e:
+        raise ConfigError(f"another `a2a watch` is already running for {ws.root}") from e
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS, help="machine-readable output")
@@ -166,6 +190,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("sign", parents=[common], help="append your signature to a body read from stdin")
     p.add_argument("--as", dest="as_name", metavar="NAME", help="sign as NAME (default: me from config)")
     p.set_defaults(func=cmd_sign)
+
+    p = sub.add_parser("watch", parents=[common], help="poll the repository and append matching activity to the inbox")
+    p.add_argument("--once", action="store_true", help="run a single round and exit (for cron and tests)")
+    p.add_argument("--interval", type=int, metavar="SEC", help="seconds between rounds (default: watch.interval)")
+    p.add_argument("--backfill", metavar="DURATION", help="on the first run, also consider activity this far back (e.g. 7d)")
+    p.set_defaults(func=cmd_watch)
 
     return parser
 

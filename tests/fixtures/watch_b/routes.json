@@ -1,0 +1,378 @@
+{
+ "repos/org/repo/issues?state=all&sort=updated&direction=desc&per_page=100": {
+  "etag": "W/\"b-issues\"",
+  "body": [
+   {
+    "id": 1003,
+    "number": 3,
+    "title": "Add retry to fetcher",
+    "user": {
+     "login": "bob"
+    },
+    "body": "Implements retries.\n\ncc @me-bot",
+    "labels": [],
+    "assignees": [],
+    "state": "open",
+    "created_at": "2026-10-17T10:20:00Z",
+    "updated_at": "2026-10-17T11:40:00Z",
+    "html_url": "https://github.com/org/repo/pull/3",
+    "pull_request": {
+     "url": "https://api.github.com/repos/org/repo/pulls/3"
+    }
+   },
+   {
+    "id": 1009,
+    "number": 9,
+    "title": "Old discussion",
+    "user": {
+     "login": "frank"
+    },
+    "body": "let's talk",
+    "labels": [],
+    "assignees": [],
+    "state": "open",
+    "created_at": "2026-09-01T08:00:00Z",
+    "updated_at": "2026-10-17T11:30:00Z",
+    "html_url": "https://github.com/org/repo/issues/9"
+   },
+   {
+    "id": 1004,
+    "number": 4,
+    "title": "Please pin me",
+    "user": {
+     "login": "erin"
+    },
+    "body": "needs an agent",
+    "labels": [
+     {
+      "name": "pin:me-bot"
+     }
+    ],
+    "assignees": [],
+    "state": "open",
+    "created_at": "2026-10-17T11:10:00Z",
+    "updated_at": "2026-10-17T11:10:00Z",
+    "html_url": "https://github.com/org/repo/issues/4"
+   },
+   {
+    "id": 1002,
+    "number": 2,
+    "title": "Crash on empty config",
+    "user": {
+     "login": "alice"
+    },
+    "body": "Steps to reproduce:\n1. empty config\n2. boom",
+    "labels": [
+     {
+      "name": "bug"
+     }
+    ],
+    "assignees": [
+     {
+      "login": "me-bot"
+     }
+    ],
+    "state": "open",
+    "created_at": "2026-10-17T10:10:00Z",
+    "updated_at": "2026-10-17T10:40:00Z",
+    "html_url": "https://github.com/org/repo/issues/2"
+   }
+  ],
+  "next": "repositories/1/issues?state=all&sort=updated&direction=desc&per_page=100&page=2",
+  "headers": {
+   "X-Poll-Interval": "120"
+  }
+ },
+ "repositories/1/issues?state=all&sort=updated&direction=desc&per_page=100&page=2": {
+  "body": [
+   {
+    "id": 1001,
+    "number": 1,
+    "title": "Docs typo",
+    "user": {
+     "login": "carol"
+    },
+    "body": "typo in README",
+    "labels": [],
+    "assignees": [],
+    "state": "open",
+    "created_at": "2026-10-17T10:00:00Z",
+    "updated_at": "2026-10-17T10:30:00Z",
+    "html_url": "https://github.com/org/repo/issues/1"
+   }
+  ]
+ },
+ "repos/org/repo/issues/comments?sort=updated&direction=desc&per_page=100": {
+  "etag": "W/\"b-comments\"",
+  "body": [
+   {
+    "id": 104,
+    "user": {
+     "login": "erin"
+    },
+    "body": "Reviving this thread.",
+    "created_at": "2026-10-17T11:30:00Z",
+    "updated_at": "2026-10-17T11:30:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/9",
+    "html_url": "https://github.com/org/repo/issues/9#issuecomment-104"
+   },
+   {
+    "id": 103,
+    "user": {
+     "login": "carol"
+    },
+    "body": "Thanks for the reply!",
+    "created_at": "2026-10-17T10:30:00Z",
+    "updated_at": "2026-10-17T10:30:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/1",
+    "html_url": "https://github.com/org/repo/issues/1#issuecomment-103"
+   },
+   {
+    "id": 102,
+    "user": {
+     "login": "alice"
+    },
+    "body": "Any update on this?",
+    "created_at": "2026-10-17T10:15:00Z",
+    "updated_at": "2026-10-17T10:15:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/2",
+    "html_url": "https://github.com/org/repo/issues/2#issuecomment-102"
+   },
+   {
+    "id": 101,
+    "user": {
+     "login": "me-bot"
+    },
+    "body": "I'll look into it.",
+    "created_at": "2026-10-17T10:05:00Z",
+    "updated_at": "2026-10-17T10:05:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/1",
+    "html_url": "https://github.com/org/repo/issues/1#issuecomment-101"
+   },
+   {
+    "id": 100,
+    "user": {
+     "login": "carol"
+    },
+    "body": "old comment, edited today",
+    "created_at": "2026-10-16T09:00:00Z",
+    "updated_at": "2026-10-17T10:02:00Z",
+    "issue_url": "https://api.github.com/repos/org/repo/issues/1",
+    "html_url": "https://github.com/org/repo/issues/1#issuecomment-100"
+   }
+  ]
+ },
+ "repos/org/repo/pulls/comments?sort=updated&direction=desc&per_page=100": {
+  "etag": "W/\"b-rc\"",
+  "body": [
+   {
+    "id": 801,
+    "pull_request_review_id": 702,
+    "user": {
+     "login": "dan"
+    },
+    "body": "nit: rename, @me-bot thoughts?",
+    "path": "fetch.py",
+    "line": 10,
+    "created_at": "2026-10-17T11:40:00Z",
+    "updated_at": "2026-10-17T11:40:00Z",
+    "pull_request_url": "https://api.github.com/repos/org/repo/pulls/3",
+    "html_url": "https://github.com/org/repo/pull/3#discussion_r801"
+   }
+  ]
+ },
+ "repos/org/repo/issues/events?per_page=100": {
+  "etag": "W/\"b-events\"",
+  "body": [
+   {
+    "id": 504,
+    "event": "labeled",
+    "actor": {
+     "login": "erin"
+    },
+    "created_at": "2026-10-17T11:10:00Z",
+    "issue": {
+     "id": 1004,
+     "number": 4,
+     "title": "Please pin me",
+     "user": {
+      "login": "erin"
+     },
+     "body": "needs an agent",
+     "labels": [
+      {
+       "name": "pin:me-bot"
+      }
+     ],
+     "assignees": [],
+     "state": "open",
+     "created_at": "2026-10-17T11:10:00Z",
+     "updated_at": "2026-10-17T11:10:00Z",
+     "html_url": "https://github.com/org/repo/issues/4"
+    },
+    "label": {
+     "name": "pin:me-bot"
+    }
+   },
+   {
+    "id": 503,
+    "event": "subscribed",
+    "actor": {
+     "login": "alice"
+    },
+    "created_at": "2026-10-17T10:13:00Z",
+    "issue": {
+     "id": 1002,
+     "number": 2,
+     "title": "Crash on empty config",
+     "user": {
+      "login": "alice"
+     },
+     "body": "Steps to reproduce:\n1. empty config\n2. boom",
+     "labels": [
+      {
+       "name": "bug"
+      }
+     ],
+     "assignees": [
+      {
+       "login": "me-bot"
+      }
+     ],
+     "state": "open",
+     "created_at": "2026-10-17T10:10:00Z",
+     "updated_at": "2026-10-17T10:40:00Z",
+     "html_url": "https://github.com/org/repo/issues/2"
+    }
+   },
+   {
+    "id": 501,
+    "event": "assigned",
+    "actor": {
+     "login": "alice"
+    },
+    "created_at": "2026-10-17T10:12:00Z",
+    "issue": {
+     "id": 1002,
+     "number": 2,
+     "title": "Crash on empty config",
+     "user": {
+      "login": "alice"
+     },
+     "body": "Steps to reproduce:\n1. empty config\n2. boom",
+     "labels": [
+      {
+       "name": "bug"
+      }
+     ],
+     "assignees": [
+      {
+       "login": "me-bot"
+      }
+     ],
+     "state": "open",
+     "created_at": "2026-10-17T10:10:00Z",
+     "updated_at": "2026-10-17T10:40:00Z",
+     "html_url": "https://github.com/org/repo/issues/2"
+    },
+    "assignee": {
+     "login": "me-bot"
+    }
+   },
+   {
+    "id": 502,
+    "event": "labeled",
+    "actor": {
+     "login": "alice"
+    },
+    "created_at": "2026-10-17T10:11:00Z",
+    "issue": {
+     "id": 1002,
+     "number": 2,
+     "title": "Crash on empty config",
+     "user": {
+      "login": "alice"
+     },
+     "body": "Steps to reproduce:\n1. empty config\n2. boom",
+     "labels": [
+      {
+       "name": "bug"
+      }
+     ],
+     "assignees": [
+      {
+       "login": "me-bot"
+      }
+     ],
+     "state": "open",
+     "created_at": "2026-10-17T10:10:00Z",
+     "updated_at": "2026-10-17T10:40:00Z",
+     "html_url": "https://github.com/org/repo/issues/2"
+    },
+    "label": {
+     "name": "bug"
+    }
+   }
+  ]
+ },
+ "repos/org/repo/pulls/3/reviews?per_page=100": {
+  "body": [
+   {
+    "id": 701,
+    "user": {
+     "login": "dan"
+    },
+    "body": "LGTM @me-bot",
+    "state": "COMMENTED",
+    "submitted_at": "2026-10-17T10:50:00Z",
+    "html_url": "https://github.com/org/repo/pull/3#pullrequestreview-701"
+   },
+   {
+    "id": 702,
+    "user": {
+     "login": "dan"
+    },
+    "body": "",
+    "state": "COMMENTED",
+    "submitted_at": "2026-10-17T11:40:00Z",
+    "html_url": "https://github.com/org/repo/pull/3#pullrequestreview-702"
+   }
+  ]
+ },
+ "search/issues?q=repo%3Aorg%2Frepo+author%3Ame-bot&per_page=100": {
+  "body": {
+   "items": []
+  }
+ },
+ "search/issues?q=repo%3Aorg%2Frepo+commenter%3Ame-bot&per_page=100": {
+  "body": {
+   "items": [
+    {
+     "number": 9
+    }
+   ]
+  }
+ },
+ "search/issues?q=repo%3Aorg%2Frepo+reviewed-by%3Ame-bot&per_page=100": {
+  "body": {
+   "items": []
+  }
+ },
+ "repos/org/repo/issues/9": {
+  "body": {
+   "id": 1009,
+   "number": 9,
+   "title": "Old discussion",
+   "user": {
+    "login": "frank"
+   },
+   "body": "let's talk",
+   "labels": [],
+   "assignees": [],
+   "state": "open",
+   "created_at": "2026-09-01T08:00:00Z",
+   "updated_at": "2026-10-17T11:30:00Z",
+   "html_url": "https://github.com/org/repo/issues/9"
+  }
+ }
+}

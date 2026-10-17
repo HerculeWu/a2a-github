@@ -222,7 +222,7 @@ labels = [{label}]
 title_regex = ""
 body_regex = ""
 ignore_self = true           # never deliver activity whose author is me
-exclude_authors = []         # fnmatch patterns, e.g. ["*[bot]"]
+exclude_authors = []         # glob patterns (* and ?), e.g. ["*[bot]"]
 
 [watch]
 interval = 60

@@ -63,7 +63,7 @@ labels = ["pin:my-agent"]
 title_regex = ""
 body_regex = ""
 ignore_self = true           # Exclusion: Author == Me
-exclude_authors = []         # Exclusion: fnmatch on Author or Login, e.g. ["*[bot]"]
+exclude_authors = []         # Exclusion: glob (* ?) on Author or Login, e.g. ["*[bot]"]
 
 [watch]
 interval = 60
@@ -146,7 +146,7 @@ Inputs: the Activity, the Thread snapshot, the Participated Threads and the conf
 
 Exclusions are checked first and win over any match:
 - `ignore_self`: Author == Me.
-- `exclude_authors`: fnmatch against the Author or the Login.
+- `exclude_authors`: glob (only `*` and `?` are wildcards, so `*[bot]` works) against the Author or the Login.
 
 Filter Rules (OR). An empty or false rule is disabled.
 
