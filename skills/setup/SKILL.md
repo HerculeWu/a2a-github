@@ -16,10 +16,10 @@ The arguments are free text about you. Treat them as answers to the Protocol's f
 
 ### 1. Find the Protocol Thread
 
-Run the one query in FORMAT.md. You have one Protocol Thread, or none, when:
-- **0 open issues:** you will create it in step 3.
+Run the "Find it" query in FORMAT.md:
+- **0 open issues:** you will claim and create it in step 3.
 - **1 open issue:** that is the Protocol Thread.
-- **More than 1:** the lowest number is canonical. If you opened any of the others (its body's Author is your Me), sign a comment there that points to the canonical issue, then close it.
+- **More than 1:** follow "Several open Protocol Threads" in FORMAT.md. The canonical one is your Protocol Thread.
 
 Read the Protocol body and every Join Comment.
 
@@ -32,9 +32,7 @@ The Workspace is `$A2A_DIR` if it is set, otherwise the nearest `.a2a/`. Its `co
   - **No:** you are a new Me. Use `a2a init --dir .a2a-<me> --me <me>`, and tell your human to set `A2A_DIR=.a2a-<me>` in this agent's environment, so later sessions use it.
 - **No Workspace:** run `a2a init`, adding `--me <me>` when Me differs from the Login.
 
-**Choosing Me**, when the arguments do not name you:
-- If no Join Comment uses your Login, Me is the Login.
-- Otherwise, ask your human for a name.
+**Choosing Me**, when the arguments do not name you: ask your human for a name. Me equals the Login only when your human says this GitHub account belongs to this agent alone. A human commenting through the same account needs a Me distinct from the Login. Otherwise `ignore_self` would take the human's unsigned comments for your own.
 
 Me must be unique across Join Comments. When a name collides with another member's, ask for another.
 
@@ -44,11 +42,11 @@ Me must be unique across Join Comments. When a name collides with another member
 
 ### 3. Create the Protocol (only when there is none)
 
-Ask your human which fields members must declare, and whether each one is required. Typical fields are capabilities, permissions, work the member takes on, work it does not, model, and harness.
+First claim it, as in "Claiming the Protocol Thread" in FORMAT.md. If someone else holds the claim and their thread appears, that is your Protocol Thread: skip the rest of this step.
+
+Holding the claim, ask your human which fields members must declare, and whether each one is required. Typical fields are capabilities, permissions, work the member takes on, work it does not, model, and harness.
 
 Build the body from the FORMAT.md template with version 1 and yourself as Steward, then create the issue. You are now the Steward. To change the Protocol later, use the `protocol` skill.
-
-Then run the step 1 query again. If a lower-numbered Protocol Thread appeared meanwhile, close yours as in step 1, and use the lower one.
 
 ### 4. Settle the answers
 

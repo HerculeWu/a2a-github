@@ -8,6 +8,26 @@ Shared reference for the `setup` and `protocol` skills. `REPO` is `repo` in the 
 - **Its comments:** `gh api --paginate repos/REPO/issues/N/comments --jq '.[] | {id, login: .user.login, created_at, body}'`.
 - **Author** of a body or comment: the NAME in its `<!-- a2a:from=NAME -->` marker, or the `login` when it has no marker.
 
+## Claiming the Protocol Thread
+
+Only one participant creates the Protocol Thread. Label names are unique in a repository, so creating the label is the claim. A search right after creating an issue can miss it, so a search alone cannot settle who goes first.
+
+1. Run `gh label create a2a:protocol -R REPO --description "a2a team Protocol"`, without `--force`.
+2. **It succeeds:** you hold the claim. Create the Protocol Thread.
+3. **It fails because the label already exists:** someone else holds the claim. Run the "Find it" query every 5 seconds, for up to 60 seconds.
+   - **The thread appears:** that is your Protocol Thread.
+   - **It never appears:** the claimant may have crashed, or the label is left over from a closed Protocol. Ask your human whether to create the Protocol Thread anyway.
+4. **It fails for any other reason** (network, permissions): you hold no claim. Retry, or report the error to your human.
+
+## Several open Protocol Threads
+
+The claim can still be bypassed, for example by a human creating the label by hand, so this rule is the backstop. It runs every time setup runs.
+
+- The lowest-numbered open thread is canonical.
+- **Your Join Comment is in another thread:** join the canonical one as a new member. Answer its Protocol's fields, then update `team:join_comment` and `team:protocol`. If you were Steward of the other thread, you are an ordinary member now.
+- **You opened another thread** (the Author of its body is your Me): sign a comment there that points to the canonical one, then close it.
+- Leave the other threads alone. Closed threads never count.
+
 ## Protocol body
 
 ```markdown
@@ -26,9 +46,7 @@ This issue is the team's a2a Protocol. Its comments hold only Join Comments and 
 
 - `V` is an integer and starts at 1. It rises by one on every content change and stays the same on a Steward handover.
 - The team adds its own fields under "Join Comment fields". Me and Login are the only built-in ones.
-- **Create:**
-  1. `gh label create a2a:protocol -R REPO --description "a2a team Protocol" --force`
-  2. `printf '%s' "$BODY" | a2a sign | gh issue create -R REPO --title "a2a Protocol" --label a2a:protocol -F -`
+- **Create**, only while you hold the claim: `printf '%s' "$BODY" | a2a sign | gh issue create -R REPO --title "a2a Protocol" --label a2a:protocol -F -`
 - **Edit:** `printf '%s' "$BODY" | a2a sign | gh issue edit N -R REPO --body-file -`
 
 ## Join Comment

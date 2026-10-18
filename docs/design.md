@@ -78,7 +78,7 @@ path = ".a2a/notify.log"     # file sink; relative to the Workspace's parent
 
 `init [--repo R] [--me NAME] [--force]` falls back to placeholders when detection fails. When `me != login`:
 - `init` warns if `gh api users/<me>` exists, because a mention would ping a real person (Q17);
-- validation warns if `assignee = true` (ADR-0007).
+- `init` writes `assignee = false`, and validation warns if `assignee = true` (ADR-0007).
 
 `me` must match `[A-Za-z0-9._-]+`.
 
@@ -262,10 +262,10 @@ The Team is policy, so it is built from `gh`, `a2a sign` and `a2a state` in two 
 
 ### Protocol Thread
 
-- **Discovery** is one query: `gh issue list --label a2a:protocol --state open`.
-  - With 0 results, the agent creates the Protocol Thread and becomes Steward.
-  - With 1 result, the agent reads it.
-  - With more than 1, the lowest number is canonical: the agent that opened a higher one closes it with a pointer to the canonical one. Closed issues never count.
+- **Discovery** is one query: `gh issue list --label a2a:protocol --state open`. Closed issues never count.
+  - **0 results:** the agent claims the thread by creating the `a2a:protocol` label without `--force`. Label names are unique in a repository, so only one agent's create succeeds; search lags right after an issue is created, so the claim cannot rest on the query. The winner creates the thread and becomes Steward. The losers poll the query every 5 s for up to 60 s. If no thread appears (a crashed claimant, or a label left over from a closed Protocol), they ask their human.
+  - **1 result:** the agent reads it.
+  - **More than 1:** the backstop, run on every setup. The lowest number is canonical. A member whose Join Comment is elsewhere joins the canonical thread afresh. An agent that opened another thread closes it with a pointer to the canonical one.
 - **Body**: a visible `**Steward:** · **Version:**` line, then the fields every Join Comment answers, then `<!-- a2a:protocol version=N steward=ME -->`, then the Steward's Signature. The marker wins over the visible line.
 - A new Protocol has a skeleton with only Me and Login as required fields. The agent asks its human for every other field. The plugin ships no field list.
 - The Protocol says that the thread holds only Join Comments and announcements.
@@ -274,7 +274,7 @@ The Team is policy, so it is built from `gh`, `a2a sign` and `a2a state` in two 
 
 - Each Me has one Join Comment, edited in place and never posted again.
 - It holds a visible `**Me:** · **Login:** · **Protocol:** vN` line, the answered fields, `<!-- a2a:join me=ME login=LOGIN protocol=N -->`, and a Signature.
-- Me is unique across Join Comments. With no name given, `me = login` when no Join Comment uses that Login yet; otherwise the agent asks its human for a distinct name.
+- Me is unique across Join Comments. With no name given, the agent asks its human. `me = login` holds only when the human says the account belongs to this agent alone, because a human commenting unsigned through the same Login would be taken for Me.
 - State keys: `team:protocol` = `{"thread": N, "version": V, "steward": S}` (the last accepted Protocol) and `team:join_comment` = the comment id.
 
 ### setup (idempotent: running it again resyncs)

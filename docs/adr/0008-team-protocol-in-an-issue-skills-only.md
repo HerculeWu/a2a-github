@@ -2,6 +2,8 @@
 
 Starting to work with a2a took too many manual steps, so joining a team is now one skill, `a2a-github:setup`. A Participant joins by posting a Join Comment that answers the team's Protocol. The Protocol is the body of a single open issue labelled `a2a:protocol`, the Protocol Thread. A Workspace (`.a2a/`) cannot hold it: a Workspace is private to one Me, gitignored, and several of them can share one checkout. A committed file would need git write access, would be blocked by branch protection, and would be attributed to a Login rather than to a Participant. Inside an issue, everything goes through `gh`, every checkout reads the same copy, and announcements in the thread reach every member through `participated`, because each member has commented there.
 
+Creating the `a2a:protocol` label is the claim to create the Protocol Thread. Label names are unique, so the create is atomic, unlike a search, which lags right after an issue is created. If two open Protocol Threads exist anyway, the lowest number wins.
+
 Only the Steward may change the Protocol. GitHub cannot enforce that when Participants share a Login, so it is a convention: a change counts only when a comment signed by the Steward in force announces it, and any other change is a conflict that each agent puts to its own human. Handing over the Steward role is announced the same way and needs no one's consent.
 
 The whole feature is two skills (`setup`, `protocol`) composed from `gh`, `a2a sign` and `a2a state`. `a2a/` gains no command, because Steward and team are policy (ADR-0001).
