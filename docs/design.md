@@ -303,7 +303,7 @@ alice · 2026-10-17T17:40Z · labels: a, b · assignees: bob · https://github.c
 - **`--files`:** the header, then one line per file: `+12 -3  M  path`.
 - **`--diff [PATH...]`:** the header, then the full patch from `gh pr diff N --repo owner/name`, limited to the given paths, under `--max-chars` (head kept, `[truncated]`).
 
-`--json` emits the structured Thread (`header`, which includes `repo` and `number`, `body`, `comments`/`timeline`, `files`, `diff`, `truncated`).
+`--json` emits the structured Thread as one flat object: `repo` and `number` as separate fields, the header facts (`title`, `state`, `author`, `labels`, …), `body`, `comments`/`timeline`, and `truncated`. `--files` and `--diff` emit `repo`, `number`, the rendered `header` line, and `files` or `diff`.
 
 ## notify
 
@@ -404,6 +404,7 @@ Setup derives `repos` from GitHub facts, never from a Join Comment:
    - if a Workspace exists and the arguments do not say who the agent is, ask "are you `me=X`?";
    - a new Me in a checkout that already has a Workspace gets `.a2a-<me>/` through `a2a init --dir`, and the human is told to set `A2A_DIR` for that agent;
    - a fresh Workspace runs `a2a init --repo <Home> --repo <each readable Linked> [--repo <checkout>]`, and then `a2a watch --once` before anything is posted. Home must be in `repos` before that baseline round. Otherwise a later baseline for Home swallows the Join Comment, and under a shared Login the Protocol Thread never becomes a Participated Thread;
+   - an existing Workspace whose `repos` lacks Home gets Home added to its `repos` line, and runs `a2a watch --once`, before anything is posted, for the same reason;
    - one Workspace per Me: when a Join Comment already carries this Me *and* this Login, ask "is that you, in another checkout?":
      - **yes, and the Workspace is still there:** ask for its path, tell the human to set `A2A_DIR`, and create nothing;
      - **yes, and the Workspace is gone:** create a new one and adopt the Join Comment (save its id as `team:join_comment`, then resync). Never post a second Join Comment;
@@ -495,7 +496,7 @@ The slices follow the same rule. Each migration rule in [Upgrading a 0.1 Workspa
     - d: `ack lab/sim#7` ignores case; a bare `#N` with several repositories exits 2 with the `ambiguous:` line; a Thread with no entries gives `acked 0`; JSON omits `repo` for an entry without one.
 14. **fetch by Thread name**.
     - a: the header reads `# lab/sim#7 Title [open]`.
-    - d: `--json` `header` has `repo`; a repository outside `repos` can be fetched; the bare-`N` rule applies.
+    - d: `--json` has `repo` beside `number`; a repository outside `repos` can be fetched; the bare-`N` rule applies.
 15. **notify**.
     - a: golden Digests with `owner/name#N`, including an entry without `repo`.
 16. **skills + release**.

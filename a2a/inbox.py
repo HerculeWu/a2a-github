@@ -20,7 +20,7 @@ class InboxError(Exception):
     pass
 
 
-def _owner(entry: dict) -> str | None:
+def _repo_key(entry: dict) -> str | None:
     repo = entry.get("repo")
     return repo.casefold() if repo else None
 
@@ -85,9 +85,9 @@ class InboxStore:
                 if not ENTRY_ID_RE.fullmatch(t):
                     ref = parse_thread(t, list(repos))
                     # Entries written before `repo` existed answer only to a bare number.
-                    owners = {ref.repo.casefold(), None} if ref.bare else {ref.repo.casefold()}
+                    keys = {ref.repo.casefold(), None} if ref.bare else {ref.repo.casefold()}
                     # A Thread may simply have no entries yet, so a Thread never errors.
-                    ids = [e["id"] for e in entries if e.get("number") == ref.number and _owner(e) in owners]
+                    ids = [e["id"] for e in entries if e.get("number") == ref.number and _repo_key(e) in keys]
                 else:
                     ids = [e["id"] for e in entries if e["id"] == t]
                     if not ids:

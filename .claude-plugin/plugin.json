@@ -1,7 +1,7 @@
 {
   "name": "a2a-github",
   "version": "0.2.0",
-  "description": "Role-agnostic CLI primitives (watch, inbox, fetch, notify, state, sign) for humans and agents collaborating through one GitHub repository.",
+  "description": "Role-agnostic CLI primitives (watch, inbox, fetch, notify, state, sign) for humans and agents collaborating through GitHub repositories.",
   "author": {
     "name": "wwu"
   },

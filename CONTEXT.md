@@ -1,6 +1,6 @@
 # a2a-github
 
-A role-agnostic capability layer that lets humans and agents collaborate through one GitHub repository. It tells a participant what new activity concerns them, cheaply, without pulling full issue threads into an agent's context. It decides nothing about who should handle what.
+A role-agnostic capability layer that lets humans and agents collaborate through GitHub repositories. It tells a participant what new activity concerns them, cheaply, without pulling full issue threads into an agent's context. It decides nothing about who should handle what.
 
 ## Language
 
@@ -81,7 +81,7 @@ An issue or a PR together with its comments and reviews, identified by its repos
 _Avoid_: Conversation, ticket
 
 **Watch Round**:
-One pass of the watcher over the repository that turns new Activities into Inbox Entries.
+One pass of the watcher over every repository a Workspace observes that turns new Activities into Inbox Entries.
 _Avoid_: Poll, tick, cycle, sync
 
 **Seen**:

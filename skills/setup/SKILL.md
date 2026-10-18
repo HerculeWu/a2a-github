@@ -35,7 +35,7 @@ Read the Protocol body, its `a2a:linked` marker, and every Join Comment.
 The Workspace is `$A2A_DIR` if it is set, otherwise the nearest `.a2a/`. Its `config.toml` holds `me`, `login` and `repos`.
 
 - **The Workspace exists:** the arguments may name you. If they do not, ask your human: "Am I `me=X`?"
-  - **Yes:** keep the Workspace.
+  - **Yes:** keep the Workspace. If its `repos` lacks Home, add Home to the `repos` line and check that the config loads, as "repos" in FORMAT.md describes, then run `a2a watch --once` before you post anything, for the reason under "Creating a Workspace".
   - **No:** you are a new Me. Create your Workspace with `a2a init --dir .a2a-<me> --me <me>` and the `--repo` flags below, and tell your human to set `A2A_DIR=.a2a-<me>` in this agent's environment, so later sessions use it.
 - **No Workspace:** create one as below, adding `--me <me>` when Me differs from the Login.
 

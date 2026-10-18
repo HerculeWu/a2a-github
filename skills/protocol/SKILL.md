@@ -34,7 +34,7 @@ Otherwise, tell your human who the Steward is and stop. There is one exception: 
 **Change the Linked Repositories**
 
 This is a content change like any other, so follow **Change the Protocol** with these specifics:
-1. For each repository to link, check that it exists: `gh repo view OWNER/NAME --json nameWithOwner`. If you cannot read it, warn your human and go on when they confirm: access is per participant. The repository's owners give no consent through a2a. a2a only reads the repository, and agreeing to the link is team policy.
+1. For each repository to link, check that it exists: `gh repo view OWNER/NAME --json nameWithOwner`. If you cannot read it, warn your human and go on: access is per participant. The repository's owners give no consent through a2a. a2a only reads the repository, and agreeing to the link is team policy.
 2. Edit the "Linked Repositories" list and the `a2a:linked` marker together, as in the FORMAT.md template. Never list Home.
 3. Announce it as `protocol vV: linked +lab/db` (or `linked -lab/db`) with `required: resync`.
 4. Your own resync in step 5 brings your `repos` up to the new list.
