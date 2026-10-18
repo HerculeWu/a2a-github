@@ -79,11 +79,12 @@ class InboxStore:
                         number = int(t[1:])
                     except ValueError as err:
                         raise InboxError(f"not a thread number: {t!r}") from err
+                    # A Thread may simply have no entries yet, so `#N` never errors.
                     ids = [e["id"] for e in entries if e.get("number") == number]
                 else:
                     ids = [e["id"] for e in entries if e["id"] == t]
-                if not ids:
-                    raise InboxError(f"no inbox entry matches {t!r}")
+                    if not ids:
+                        raise InboxError(f"no inbox entry matches {t!r}")
                 wanted.extend(ids)
         with fsio.locked(self.acks_path):
             acked = self.acked()

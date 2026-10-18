@@ -70,3 +70,8 @@ def test_parse_duration(text, seconds):
 def test_parse_duration_rejects_garbage():
     with pytest.raises(ValueError):
         parse_duration("soon")
+
+
+def test_snippet_drops_a2a_markers_but_keeps_other_comments():
+    text = "protocol v2: added Areas\nrequired: update\n\n<!-- a2a:protocol-change version=2 steward=s --> <!-- note -->"
+    assert snippet(text) == "protocol v2: added Areas required: update <!-- note -->"

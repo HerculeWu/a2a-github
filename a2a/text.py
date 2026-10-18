@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 
 SNIPPET_LEN = 200
 
+# Hidden markers such as `<!-- a2a:join … -->` are for machines, not for a one-line preview.
+A2A_MARKER_RE = re.compile(r"<!--\s*a2a:[^>]*-->")
+
 
 def snippet(text: str | None, limit: int = SNIPPET_LEN) -> str:
-    """Single line, whitespace collapsed, at most `limit` code points ending in `…` when cut."""
-    flat = " ".join((text or "").split())
+    """Single line, a2a markers dropped, whitespace collapsed, at most `limit` code points ending in `…` when cut."""
+    flat = " ".join(A2A_MARKER_RE.sub(" ", text or "").split())
     if len(flat) <= limit:
         return flat
     return flat[: limit - 1] + "…"

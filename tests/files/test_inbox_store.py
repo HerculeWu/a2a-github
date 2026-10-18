@@ -53,11 +53,13 @@ def test_ack_twice_reports_nothing_new(store):
     assert store.ack(["c-2"]) == []
 
 
-def test_ack_unknown_target_errors(store):
+def test_ack_unknown_id_errors(store):
     with pytest.raises(InboxError):
         store.ack(["c-999"])
-    with pytest.raises(InboxError):
-        store.ack(["#404"])
+
+
+def test_ack_thread_without_entries_acks_nothing(store):
+    assert store.ack(["#404"]) == []
 
 
 def test_ack_failure_before_replace_keeps_acks(store, tmp_a2a_dir, monkeypatch):
