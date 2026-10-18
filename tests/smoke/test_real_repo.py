@@ -62,11 +62,13 @@ def test_issue_and_comment_reach_the_inbox(tmp_path):
     number = int(url.rstrip("/").rsplit("/", 1)[1])
     try:
         opened = wait_for(ws, lambda e: e["number"] == number and e["type"] == "issue_opened")
+        assert opened[0]["repo"] == REPO
         assert opened[0]["matched_rules"] == ["title_regex"]
 
         gh("issue", "comment", str(number), "--repo", REPO, "--body", "smoke comment")
         comment = wait_for(ws, lambda e: e["number"] == number and e["type"] == "comment")
         assert comment[0]["snippet"] == "smoke comment"
-        assert "smoke comment" in a2a(ws, "fetch", "issue", str(number))
+        assert "smoke comment" in a2a(ws, "fetch", "issue", f"{REPO}#{number}")
+        assert a2a(ws, "inbox", "ack", f"{REPO}#{number}") == "acked 2\n"
     finally:
         gh("issue", "close", str(number), "--repo", REPO)
