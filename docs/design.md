@@ -126,7 +126,7 @@ Fixed URLs. They never carry `since`, because a changing URL can never produce a
 
 ### First run, Backfill and participation bootstrap
 
-- **First run:** with no `seen.json`, cursors start at now minus `--backfill` (default 0), so history never floods the Inbox.
+- **First run:** with no `seen.json`, cursors start at now minus `--backfill` (default 0). The round is a baseline: every Activity it sees enters Seen (and records participation) but is delivered only when `--backfill` was given and the Activity is no older than now minus Backfill. Without Backfill it delivers nothing, so history never floods the Inbox. This rests on what the round saw, not on clocks, because the overlap below each cursor would otherwise let the last minutes before the first round through. A first round that fails before saving `seen.json` simply runs again as a first round.
 - **Participation bootstrap:** on the first run of an own-account Workspace (`me == login`), Participated Threads are seeded from three search API queries: `repo:R author:LOGIN`, `repo:R commenter:LOGIN` and `repo:R reviewed-by:LOGIN`. Under a shared Login they accumulate locally only.
 
 ### Daemon mode

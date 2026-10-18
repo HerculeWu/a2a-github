@@ -200,13 +200,18 @@ def run_round(
         except GhError as e:
             warn(f"could not bootstrap participated threads from search: {e}")
 
+    # The first round is a baseline: everything it sees already existed, so it only enters Seen.
+    # An explicit Backfill is the one way to deliver part of it.
+    def deliverable(a: Activity) -> bool:
+        return not first_run or (backfill > timedelta(0) and a.ts >= now - backfill)
+
     entries = []
     for a in fresh:
         if a.number not in threads:
             threads[a.number] = thread_from_issue(gh.api(f"repos/{cfg.repo}/issues/{a.number}").body)
         thread = threads[a.number]
         decision = evaluate(a, thread, seen.participated, cfg)
-        if decision.delivered:
+        if decision.delivered and deliverable(a):
             entries.append(to_entry(a, thread, decision.matched))
         if a.type in ("issue_opened", "pr_opened", "comment", "review") and a.author.casefold() == cfg.me.casefold():
             seen.participated.add(a.number)

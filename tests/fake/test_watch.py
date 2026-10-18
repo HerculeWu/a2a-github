@@ -114,6 +114,19 @@ def test_first_run_without_backfill_ignores_history(ws, fake_gh):
     assert round_(ws, fake_gh("watch_b"), now=LATER, backfill=timedelta(0)).new == []
 
 
+def test_first_run_without_backfill_delivers_nothing_even_minutes_old(ws, fake_gh):
+    # The latest fixture Activity is at 10:30, inside the overlap window below a 10:35 cursor.
+    just_after = datetime(2026, 10, 17, 10, 35, tzinfo=timezone.utc)
+    assert round_(ws, fake_gh("watch_a"), now=just_after, backfill=timedelta(0)).new == []
+    assert "c-103" in fsio.read_json(ws.seen_path, {})["recent"]
+
+
+def test_first_run_backfill_delivers_only_from_its_start(ws, fake_gh):
+    just_after = datetime(2026, 10, 17, 10, 35, tzinfo=timezone.utc)
+    new = round_(ws, fake_gh("watch_a"), now=just_after, backfill=timedelta(minutes=10)).new
+    assert new and all(e["ts"] >= "2026-10-17T10:25:00Z" for e in new)
+
+
 def test_thread_snapshot_fetched_when_not_in_issue_stream(ws, fake_gh):
     round_(ws, fake_gh("watch_a"))
     routes = load_fixture("watch_b")
