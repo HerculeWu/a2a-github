@@ -23,6 +23,8 @@ a2a/                 stdlib-only package (ADR-0003); knows nothing about Claude 
   state.py           State store
 bin/a2a              plugin shim: puts the plugin root on sys.path, calls a2a.cli.main
 skills/a2a/SKILL.md  agent-facing usage (English only)
+skills/setup/        join the team or resync with its Protocol; FORMAT.md holds the shared templates
+skills/protocol/     the Steward changes the Protocol or hands the role over
 .claude-plugin/      plugin.json + marketplace.json (source "./"; verify with `claude plugin validate`, else move plugin to plugin/)
 pyproject.toml       console script `a2a = a2a.cli:main` for pip/pipx; dev extras pytest, pytest-cov
 ```
@@ -254,6 +256,56 @@ alice · 2026-10-17T17:40Z · labels: a, b · assignees: bob · https://github.c
 
 Concurrent `set`s of different keys must both survive, which the flock guarantees.
 
+## Team (skills only, ADR-0008)
+
+The Team is policy, so it is built from `gh`, `a2a sign` and `a2a state` in two skills and adds nothing to `a2a/`. The exact body, comment and marker templates live in `skills/setup/FORMAT.md`, and that file is the single source for them.
+
+### Protocol Thread
+
+- **Discovery** is one query: `gh issue list --label a2a:protocol --state open`.
+  - With 0 results, the agent creates the Protocol Thread and becomes Steward.
+  - With 1 result, the agent reads it.
+  - With more than 1, the lowest number is canonical: the agent that opened a higher one closes it with a pointer to the canonical one. Closed issues never count.
+- **Body**: a visible `**Steward:** · **Version:**` line, then the fields every Join Comment answers, then `<!-- a2a:protocol version=N steward=ME -->`, then the Steward's Signature. The marker wins over the visible line.
+- A new Protocol has a skeleton with only Me and Login as required fields. The agent asks its human for every other field. The plugin ships no field list.
+- The Protocol says that the thread holds only Join Comments and announcements.
+
+### Join Comment
+
+- Each Me has one Join Comment, edited in place and never posted again.
+- It holds a visible `**Me:** · **Login:** · **Protocol:** vN` line, the answered fields, `<!-- a2a:join me=ME login=LOGIN protocol=N -->`, and a Signature.
+- Me is unique across Join Comments. With no name given, `me = login` when no Join Comment uses that Login yet; otherwise the agent asks its human for a distinct name.
+- State keys: `team:protocol` = `{"thread": N, "version": V, "steward": S}` (the last accepted Protocol) and `team:join_comment` = the comment id.
+
+### setup (idempotent: running it again resyncs)
+
+1. Find the Protocol Thread.
+2. Resolve the Workspace and Me:
+   - if a Workspace exists and the arguments do not say who the agent is, ask "are you `me=X`?";
+   - a new Me in a checkout that already has a Workspace gets `.a2a-<me>/` through `a2a init --dir`, and the human is told to set `A2A_DIR` for that agent;
+   - a fresh Workspace runs `a2a watch --once` before anything is posted, so the agent's own later comments seed `participated`.
+3. Create the Protocol when there is none.
+4. Map the free-text arguments onto the Protocol's fields. Prefill self-known facts (Login, model, harness) for confirmation, and ask the human for every missing field in one batch.
+5. Post or edit the Join Comment only after the human confirms.
+6. On a resync, also do what each accepted announcement's `required:` names, and nothing beyond it. Post no reply; the version in the Join Comment is the acknowledgement.
+7. Ack the Protocol Thread's Inbox Entries, then print the `a2a watch --notify` command. A watcher that is not running means no Protocol announcements arrive, so the agent says this, and starts the watcher only when asked.
+
+### protocol (Steward only)
+
+- **Change**: edit the body with version + 1, then post `protocol vN: <changes>` / `required: <actions>` with `<!-- a2a:protocol-change version=N steward=ME -->`.
+- **Hand over**: edit `steward=` with the version unchanged, then post a broadcast with `<!-- a2a:steward-change version=N from=OLD to=NEW -->`. Nobody needs to consent, and members have nothing to do.
+- **Lagging**: list the Join Comments whose `protocol=` is below the current version.
+- A non-Steward caller is refused and told who the Steward is. When the Steward is gone, the human appoints a successor, whose `steward-change` adds `appointed-by=LOGIN`.
+
+### Accepting a change, and conflicts
+
+- A `protocol-change` counts when its Author is the Steward in force.
+- A `steward-change` counts when its Author is its `from`, and `from` is the Steward in force.
+- Anything else is a conflict. The agent changes nothing and asks its human. Conflicts include:
+  - an announcement from anyone else;
+  - a body marker that does not match the last accepted announcement;
+  - an `appointed-by` takeover.
+
 ## GhClient
 
 ```python
@@ -295,9 +347,11 @@ Each primitive is one vertical slice and one commit: write its a/b tests (red), 
 7. notify
 8. plugin + README (zh/en) + SKILL.md
 9. smoke tests
+10. team skills (setup, protocol) + ADR-0008
 
 ## Deferred
 
 - Inbox retention / prune.
 - Edited text as Activity (ADR-0006).
 - Grouping Activities from one Watch Round per Thread.
+- Leaving the Team (withdrawing a Join Comment).

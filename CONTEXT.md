@@ -30,6 +30,28 @@ _Avoid_: Tag, stamp, header
 The Participant an Activity is attributed to: the name in its Signature if it has one, otherwise its Login. Activities that carry no text, such as labeling or assigning, are always attributed to the Login.
 _Avoid_: Actor, sender, poster
 
+### Team
+
+**Team**:
+The Participants that have a Join Comment in the Protocol Thread.
+_Avoid_: Group, org, crew
+
+**Protocol**:
+The team's own agreement about what a Participant declares when it joins, such as its capabilities, permissions, model or harness. The team decides its content; a2a requires only that it names a Steward and carries a version.
+_Avoid_: Rules, charter, policy
+
+**Protocol Thread**:
+The single issue whose body is the Protocol. The team joins and is told about Protocol changes in its comments.
+_Avoid_: Roster issue, team issue
+
+**Steward**:
+The one Participant allowed to change the Protocol. The Participant that created it is the Steward until the Steward hands the role to someone else.
+_Avoid_: Owner, admin, maintainer
+
+**Join Comment**:
+A Participant's one comment in the Protocol Thread that declares who it is (its Me and Login) and whatever else the Protocol asks, answered against a stated Protocol version. It is edited in place when the Protocol changes, never posted again.
+_Avoid_: Registration, roster entry, profile
+
 ### Observing the repository
 
 **Activity**:
@@ -124,3 +146,5 @@ _Avoid_: Memory, cache, config
 - An Activity becomes an **Inbox Entry** only if it Matches and no **Exclusion** applies; by default Activity whose **Author** is **Me** is excluded.
 - **Seen** belongs to the watcher; **Read** belongs to the consumer. They are independent.
 - **Notify** reads the **Inbox**, never the repository.
+- A repository has at most one open **Protocol Thread**; each **Participant** in the team has exactly one **Join Comment** in it.
+- A **Protocol** change counts only when the **Steward** of the previous version announces it in the Protocol Thread.

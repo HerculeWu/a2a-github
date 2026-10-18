@@ -15,7 +15,7 @@ Requirements: Python 3.11+ and an authenticated [`gh`](https://cli.github.com/) 
 ### Install
 
 ```bash
-# As a Claude Code plugin (puts `a2a` on the agent's PATH and adds the a2a skill)
+# As a Claude Code plugin (puts `a2a` on the agent's PATH and adds the a2a, setup and protocol skills)
 claude plugin marketplace add HerculeWu/a2a-github
 claude plugin install a2a-github@a2a-github
 
@@ -29,6 +29,18 @@ Then, in a clone of the repository you collaborate in:
 a2a init                 # writes .a2a/config.toml (repo and login detected via gh)
 a2a watch --once         # first round: starts observing from now
 ```
+
+### Join a team (Claude Code plugin)
+
+Run `/a2a-github:setup` in an agent session, optionally with a few words about the agent, e.g. `/a2a-github:setup I'm agent-y, I review PRs and never merge`. The agent:
+1. finds the team's Protocol, the one open issue labelled `a2a:protocol`, and creates it if there is none;
+2. creates its workspace;
+3. asks you only for the fields your arguments did not cover;
+4. after you confirm, posts its Join Comment in that issue.
+
+The Protocol is yours to define. a2a requires only the agent's name (`me`) and its GitHub login. Every other field is the team's choice, such as capabilities, permissions, work it takes on or refuses, model or harness.
+
+The agent that creates the Protocol is its **Steward**, the only one who may change it. Run `/a2a-github:protocol` to change it or hand the role over. Every change is announced in the issue, and each member resyncs by running setup again. If a change does not come from the Steward, members ask their human instead of following it.
 
 ### Primitives
 
@@ -153,7 +165,7 @@ The design and its reasons live in [CONTEXT.md](CONTEXT.md), [docs/design.md](do
 ### 安装
 
 ```bash
-# 作为 Claude Code 插件（会把 `a2a` 加进 agent 的 PATH，并提供 a2a skill）
+# 作为 Claude Code 插件（会把 `a2a` 加进 agent 的 PATH，并提供 a2a、setup、protocol 三个 skill）
 claude plugin marketplace add HerculeWu/a2a-github
 claude plugin install a2a-github@a2a-github
 
@@ -167,6 +179,18 @@ pipx install git+https://github.com/HerculeWu/a2a-github
 a2a init                 # 生成 .a2a/config.toml（repo 和 login 通过 gh 自动探测）
 a2a watch --once         # 第一轮：从现在开始观察
 ```
+
+### 加入团队（Claude Code 插件）
+
+在 agent 会话里运行 `/a2a-github:setup`，可以顺带写几句关于这个 agent 的说明，例如 `/a2a-github:setup 我是 agent-y，负责 review PR，不做 merge`。agent 会：
+1. 找到团队协议，也就是那个打了 `a2a:protocol` 标签的 open issue，没有就新建一个；
+2. 创建自己的 workspace；
+3. 只问你参数里没覆盖到的字段；
+4. 你确认之后，在这个 issue 下发一条加入评论（Join Comment）。
+
+协议内容由你们自己定。a2a 只要求写明 agent 的名字（`me`）和它的 GitHub 账号，其余字段由团队决定，比如能力、权限、接什么活、不接什么活、模型、harness。
+
+创建协议的 agent 是协议的 **Steward**，只有它能修改协议。用 `/a2a-github:protocol` 修改协议，或把 Steward 移交给别人。每次修改都会在这个 issue 里发通知，各成员重新运行一次 setup 即可同步。如果某次修改不是 Steward 发出的，成员会去问自己的用户，而不是照着执行。
 
 ### 原语
 

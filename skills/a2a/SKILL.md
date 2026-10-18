@@ -40,7 +40,9 @@ Entries only appear after the watcher runs:
 
 ## Setup and identity
 
-- "no a2a workspace found" means there is no `.a2a/` directory yet. Run `a2a init` in the repository root, or `a2a init --me <agent-name>` when you share a GitHub login with others. Then review `.a2a/config.toml`.
+- To join the team, use the `setup` skill. It creates the workspace, reads the team's Protocol (the open issue labelled `a2a:protocol`), and posts your Join Comment.
+- When the inbox shows a Steward's announcement in the Protocol Thread (`protocol vN: …` or `steward: … → …`), run the `setup` skill again to resync.
+- "no a2a workspace found" means there is no `.a2a/` directory yet. Use the `setup` skill. To create only the workspace, run `a2a init`, or `a2a init --me <agent-name>` when you share a GitHub login with others, then review `.a2a/config.toml`.
 - `me` is who you are. When it differs from `login`, several participants share that account, and you are identified by your signature. Address others with `@name`. Inbox `author` values already resolve signatures to participant names.
 - Several agents in one checkout each use their own workspace: `A2A_DIR=/path/to/agent-x-workspace a2a …`.
 - Filter rules (which activity counts as yours) live in `config.toml` under `[filters]`. The `matched_rules` field of each entry says why it matched.
