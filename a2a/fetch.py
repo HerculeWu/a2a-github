@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from a2a.sign import author_of, strip_signature
+from a2a.thread import format_thread
 from a2a.timeutil import fmt_iso, fmt_short, parse_iso
 
 TRUNC = " [truncated]"
@@ -130,7 +131,7 @@ def _comment_post(c: dict) -> Post:
     return Post(author=author_of(c.get("body"), login), login=login, ts=parse_iso(c["created_at"]), text=strip_signature(c.get("body")))
 
 
-def _header(item: dict, state: str, extra: list[str]) -> str:
+def _header(repo: str, item: dict, state: str, extra: list[str]) -> str:
     login = (item.get("user") or {}).get("login") or "ghost"
     meta = [author_of(item.get("body"), login), _when(parse_iso(item["created_at"])), *extra]
     labels = _names(item.get("labels"), "name")
@@ -140,12 +141,13 @@ def _header(item: dict, state: str, extra: list[str]) -> str:
     if assignees:
         meta.append("assignees: " + ", ".join(assignees))
     meta.append(item.get("html_url") or "")
-    return f"# #{item['number']} {item.get('title') or ''} [{state}]\n" + " · ".join(meta)
+    return f"# {format_thread(repo, item['number'])} {item.get('title') or ''} [{state}]\n" + " · ".join(meta)
 
 
-def _thread_json(item: dict, rendered: Rendered, view: ThreadView, is_pr: bool) -> dict:
+def _thread_json(repo: str, item: dict, rendered: Rendered, view: ThreadView, is_pr: bool) -> dict:
     login = (item.get("user") or {}).get("login") or "ghost"
     return {
+        "repo": repo,
         "number": item["number"],
         "title": item.get("title"),
         "state": item.get("state"),
@@ -170,20 +172,20 @@ def fetch_issue(gh, repo: str, number: int, since: datetime | None = None, comme
     state = item.get("state", "open") + (" · PR" if is_pr else "")
     posts = [_comment_post(c) for c in _get_all(gh, f"repos/{repo}/issues/{number}/comments?per_page=100")]
     body = None if comments_only else strip_signature(item.get("body"))
-    view = ThreadView(_header(item, state, []), body, after(posts, since), len(posts), since)
+    view = ThreadView(_header(repo, item, state, []), body, after(posts, since), len(posts), since)
     out = fit(view, max_chars)
-    out.data = {**_thread_json(item, out, view, is_pr), "comments": [p.to_json() for p in out.posts]}
+    out.data = {**_thread_json(repo, item, out, view, is_pr), "comments": [p.to_json() for p in out.posts]}
     return out
 
 
-def _pr_head(pr: dict) -> str:
+def _pr_head(repo: str, pr: dict) -> str:
     state = "merged" if pr.get("merged") else pr.get("state", "open")
     state += " · PR" + (" · draft" if pr.get("draft") else "")
     extra = [
         f"{pr['base']['ref']} ← {pr['head']['ref']}",
         f"+{pr.get('additions', 0)} -{pr.get('deletions', 0)} in {pr.get('changed_files', 0)} files",
     ]
-    return _header(pr, state, extra)
+    return _header(repo, pr, state, extra)
 
 
 def _split_diff(diff: str, paths: list[str]) -> str:
@@ -209,7 +211,7 @@ def fetch_pr(gh, repo: str, number: int, since: datetime | None = None, comments
              max_chars: int | None = None, files: bool = False, diff: bool = False,
              paths: list[str] | None = None) -> Rendered:
     pr = gh.api(f"repos/{repo}/pulls/{number}").body
-    header = _pr_head(pr)
+    header = _pr_head(repo, pr)
 
     if files:
         listing = _get_all(gh, f"repos/{repo}/pulls/{number}/files?per_page=100")
@@ -219,7 +221,7 @@ def fetch_pr(gh, repo: str, number: int, since: datetime | None = None, comments
         ]
         lines = [f"+{r['additions']} -{r['deletions']}  {FILE_STATUS.get(r['status'], '?')}  {r['path']}" for r in rows]
         text = header + "\n\n" + "\n".join(lines)
-        return Rendered(text, None, [], data={"number": number, "header": header, "files": rows, "truncated": False})
+        return Rendered(text, None, [], data={"repo": repo, "number": number, "header": header, "files": rows, "truncated": False})
 
     if diff:
         patch = _split_diff(gh.run("pr", "diff", str(number), "--repo", repo), paths or [])
@@ -228,7 +230,7 @@ def fetch_pr(gh, repo: str, number: int, since: datetime | None = None, comments
         if truncated:
             text = text[: max_chars - len(TRUNC) - 1].rstrip() + "\n" + TRUNC.strip()
         return Rendered(text, None, [], truncated=truncated,
-                        data={"number": number, "header": header, "diff": patch, "truncated": truncated})
+                        data={"repo": repo, "number": number, "header": header, "diff": patch, "truncated": truncated})
 
     comments = [_comment_post(c) for c in _get_all(gh, f"repos/{repo}/issues/{number}/comments?per_page=100")]
     inline: dict[Any, list[dict]] = {}
@@ -250,7 +252,7 @@ def fetch_pr(gh, repo: str, number: int, since: datetime | None = None, comments
     view = ThreadView(header, body, after(timeline, since), len(timeline), since, section="Timeline")
     out = fit(view, max_chars)
     out.data = {
-        **_thread_json(pr, out, view, True),
+        **_thread_json(repo, pr, out, view, True),
         "state": "merged" if pr.get("merged") else pr.get("state"),
         "draft": bool(pr.get("draft")),
         "base": pr["base"]["ref"],

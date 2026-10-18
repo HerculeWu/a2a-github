@@ -213,6 +213,10 @@ FETCH = {
     f"repos/{REPO}/pulls/3/comments?per_page=100": {
         "body": [review_comment(801, 3, 702, "dan", D + "11:40:00Z", "fetch.py", "nit: rename")]
     },
+    # a Thread in a repository the fetching Workspace need not observe
+    "repos/lab/sim/issues/7": {"body": issue(7, "Sim run diverges", "gina", D + "09:00:00Z", D + "09:00:00Z",
+                                             body="diverges after step 40", repo="lab/sim", iid=2007)},
+    "repos/lab/sim/issues/7/comments?per_page=100": {"body": []},
     f"repos/{REPO}/pulls/3/files?per_page=100": {
         "body": [
             {"filename": "a2a/fetch.py", "status": "modified", "additions": 26, "deletions": 4},

@@ -18,7 +18,7 @@ from a2a.timeutil import parse_duration, parse_iso
 from a2a.watch import run_daemon, run_round, watch_lock
 from a2a.notify import NotifyError, notify
 from a2a.state import StateStore, compact, format_value, parse_value
-from a2a.thread import ThreadNameError
+from a2a.thread import ThreadNameError, parse_thread
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
 
@@ -80,13 +80,6 @@ def cmd_init(app: App, args) -> Result:
     target = init_workspace(init_target(getattr(args, "dir", None)), repos=repos, login=login, me=me, force=args.force)
     data = {"workspace": str(target), "repos": repos, "login": login, "me": me}
     return Result(text=f"initialised {target} (repos {', '.join(repos)}, me {me})", data=data)
-
-
-def only_repo(cfg) -> str:
-    """Commands not yet taught several repositories serve a Workspace with one."""
-    if len(cfg.repos) != 1:
-        raise ConfigError("several repositories are not supported yet")
-    return cfg.repos[0]
 
 
 def cmd_state(app: App, args) -> Result:
@@ -168,11 +161,13 @@ def cmd_fetch(app: App, args) -> Result:
     since = parse_iso(args.since) if args.since else None
     if args.max_chars is not None and args.max_chars < 1:
         raise ValueError("--max-chars must be positive")
+    # Any repository the Login can read, not only those in repos.
+    ref = parse_thread(args.thread, cfg.repos)
     common = dict(since=since, comments_only=args.comments_only, max_chars=args.max_chars)
     if args.kind == "issue":
-        out = fetch_issue(app.gh, only_repo(cfg), args.number, **common)
+        out = fetch_issue(app.gh, ref.repo, ref.number, **common)
     else:
-        out = fetch_pr(app.gh, only_repo(cfg), args.number, files=args.files, diff=args.diff is not None,
+        out = fetch_pr(app.gh, ref.repo, ref.number, files=args.files, diff=args.diff is not None,
                        paths=args.diff or [], **common)
     return Result(text=out.text, data=out.data)
 
@@ -243,7 +238,7 @@ def build_parser() -> argparse.ArgumentParser:
     fsub = p.add_subparsers(dest="kind", required=True, metavar="KIND")
     for kind, what in (("issue", "an issue (or a PR's conversation)"), ("pr", "a pull request with reviews")):
         fp = fsub.add_parser(kind, parents=[common], help=f"fetch {what}")
-        fp.add_argument("number", type=int)
+        fp.add_argument("thread", metavar="THREAD", help="owner/name#N, or #N or N when repos has one entry")
         fp.add_argument("--since", metavar="ISO", help="only comments after this UTC time")
         fp.add_argument("--comments-only", action="store_true", help="omit the opening body")
         fp.add_argument("--max-chars", type=int, metavar="N", help="fit output into N characters, keeping the newest comments")

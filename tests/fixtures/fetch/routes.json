@@ -180,6 +180,26 @@
    }
   ]
  },
+ "repos/lab/sim/issues/7": {
+  "body": {
+   "id": 2007,
+   "number": 7,
+   "title": "Sim run diverges",
+   "user": {
+    "login": "gina"
+   },
+   "body": "diverges after step 40",
+   "labels": [],
+   "assignees": [],
+   "state": "open",
+   "created_at": "2026-10-17T09:00:00Z",
+   "updated_at": "2026-10-17T09:00:00Z",
+   "html_url": "https://github.com/lab/sim/issues/7"
+  }
+ },
+ "repos/lab/sim/issues/7/comments?per_page=100": {
+  "body": []
+ },
  "repos/org/repo/pulls/3/files?per_page=100": {
   "body": [
    {

@@ -7,7 +7,7 @@ REPO = "org/repo"
 def test_fetch_issue_full(fake_gh):
     out = fetch_issue(fake_gh("fetch"), REPO, 2)
     assert out.text == (
-        "# #2 Crash on empty config [open]\n"
+        "# org/repo#2 Crash on empty config [open]\n"
         "alice · 2026-10-17T10:10Z · labels: bug · assignees: me-bot · https://github.com/org/repo/issues/2\n\n"
         "Steps to reproduce:\n1. empty config\n2. boom\n\n"
         "## Comments (3)\n"
@@ -28,13 +28,13 @@ def test_fetch_issue_since_and_comments_only(fake_gh):
 
 
 def test_fetch_issue_on_a_pr_says_so(fake_gh):
-    assert fetch_issue(fake_gh("fetch"), REPO, 3).text.startswith("# #3 Add retry to fetcher [open · PR]")
+    assert fetch_issue(fake_gh("fetch"), REPO, 3).text.startswith("# org/repo#3 Add retry to fetcher [open · PR]")
 
 
 def test_fetch_pr_timeline(fake_gh):
     out = fetch_pr(fake_gh("fetch"), REPO, 3)
     lines = out.text.splitlines()
-    assert lines[0] == "# #3 Add retry to fetcher [open · PR]"
+    assert lines[0] == "# org/repo#3 Add retry to fetcher [open · PR]"
     assert lines[1] == "bob · 2026-10-17T10:20Z · main ← retry · +30 -4 in 2 files · https://github.com/org/repo/pull/3"
     assert "## Timeline (3)" in out.text
     assert "### dan · review APPROVED · 2026-10-17T10:50Z\nLGTM @me-bot" in out.text
@@ -57,3 +57,15 @@ def test_fetch_pr_diff_full_and_by_path(fake_gh):
     assert "+def test(): pass" in only.text
     cut = fetch_pr(fake_gh("fetch"), REPO, 3, diff=True, max_chars=200)
     assert len(cut.text) <= 200 and cut.text.endswith("[truncated]") and cut.data["truncated"]
+
+
+def test_the_header_names_the_thread_with_its_repo(fake_gh):
+    out = fetch_issue(fake_gh("fetch"), "lab/sim", 7)
+    assert out.text.splitlines()[0] == "# lab/sim#7 Sim run diverges [open]"
+    assert (out.data["repo"], out.data["number"]) == ("lab/sim", 7)
+
+
+def test_every_pr_view_carries_repo_and_number(fake_gh):
+    for kw in ({}, {"files": True}, {"diff": True}):
+        data = fetch_pr(fake_gh("fetch"), REPO, 3, **kw).data
+        assert (data["repo"], data["number"]) == (REPO, 3)
