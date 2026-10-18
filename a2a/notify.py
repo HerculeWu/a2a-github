@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from a2a import fsio
 from a2a.activity import TEXT_TYPES
 from a2a.inbox import InboxStore
+from a2a.thread import format_thread
 from a2a.workspace import Config, ConfigError, Workspace
 
 DIGEST_ITEMS = 5
@@ -21,7 +22,8 @@ class NotifyError(Exception):
 def digest(unread: list[dict]) -> str:
     shown = unread[-DIGEST_ITEMS:]
     parts = [
-        f"#{e['number']} {e['type']}({e.get('author', '')})" if e["type"] in TEXT_TYPES else f"#{e['number']} {e['type']}"
+        f"{format_thread(e.get('repo'), e['number'])} {e['type']}"
+        + (f"({e.get('author', '')})" if e["type"] in TEXT_TYPES else "")
         for e in shown
     ]
     if len(unread) > len(shown):
