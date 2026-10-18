@@ -172,12 +172,12 @@ Filter Rules (OR). An empty or false rule is disabled.
 - **id prefixes:** `i-` issue/PR id (`*_opened`), `c-` comment id, `r-` review id, `e-` issue-event id.
 - **`ts`:** when the Activity happened on GitHub.
 - **`read`:** not stored; it is computed from `acks.json` on output (ADR-0005).
-- **Snippet:** the text with its Signature stripped and whitespace collapsed to single spaces, at most 200 code points, ending in `…` when cut. Textless types get a synthetic snippet: `label: X`, `assignee: X`, `reviewer: X`, `closed`, `reopened`, `merged`. A review without a body uses its first inline comment, prefixed `path: `.
+- **Snippet:** the text with its Signature and any other `<!-- a2a:… -->` marker stripped, and whitespace collapsed to single spaces, at most 200 code points, ending in `…` when cut. Textless types get a synthetic snippet: `label: X`, `assignee: X`, `reviewer: X`, `closed`, `reopened`, `merged`. A review without a body uses its first inline comment, prefixed `path: `.
 
 ## inbox
 
 - `a2a inbox list [--unread] [--since ISO] [--type T[,T]] [--limit N]`: entries in append order; `--limit` keeps the last N.
-- `a2a inbox ack <id|#N>... | --all`: `#N` acks every entry of Thread N. Output: `acked K`; with `--json`, `{"acked": [ids]}`.
+- `a2a inbox ack <id|#N>... | --all`: `#N` acks every entry of Thread N, and acks nothing without error when the Thread has none; an unknown id is an error. Output: `acked K`; with `--json`, `{"acked": [ids]}`.
 - `a2a inbox count [--unread]`: a single number; with `--json`, `{"count": n}`.
 
 ### Line format (golden-tested)
@@ -275,7 +275,7 @@ The Team is policy, so it is built from `gh`, `a2a sign` and `a2a state` in two 
 - Each Me has one Join Comment, edited in place and never posted again.
 - It holds a visible `**Me:** · **Login:** · **Protocol:** vN` line, the answered fields, `<!-- a2a:join me=ME login=LOGIN protocol=N -->`, and a Signature.
 - Me is unique across Join Comments. With no name given, the agent asks its human. `me = login` holds only when the human says the account belongs to this agent alone, because a human commenting unsigned through the same Login would be taken for Me.
-- State keys: `team:protocol` = `{"thread": N, "version": V, "steward": S}` (the last accepted Protocol) and `team:join_comment` = the comment id.
+- State keys: `team:protocol` = `{"thread": N, "version": V, "steward": S, "through": C}` (the last accepted Protocol, and the id of the last announcement considered, accepted or not, so a conflict the human has settled is not raised again) and `team:join_comment` = the comment id.
 
 ### setup (idempotent: running it again resyncs)
 

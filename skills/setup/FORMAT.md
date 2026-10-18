@@ -89,7 +89,9 @@ When the human appoints a successor because the Steward is gone, the successor p
 
 ## Accepting a change
 
-Keep the last accepted Protocol in `a2a state set team:protocol '{"thread": N, "version": V, "steward": "S"}'`. Walk the announcements newer than that, oldest first:
+Keep the last accepted Protocol, and how far you have read, in `a2a state set team:protocol '{"thread": N, "version": V, "steward": "S", "through": C}'`.
+
+`C` is the id of the last announcement you considered, whether you accepted it or your human settled it. Comment ids only grow, so walk only the announcements with an id greater than `C`, oldest first. A new member sets `C` to the newest announcement's id when it joins, because the body already reflects every earlier one.
 
 - A `protocol-change` counts when its Author is the Steward in force. Its version becomes the accepted version.
 - A `steward-change` counts when its Author is its `from`, `from` is the Steward in force, and it has no `appointed-by`. Its `to` becomes the Steward in force.
@@ -101,4 +103,4 @@ Everything else is a **conflict**. Examples:
 - a body marker that no accepted announcement explains;
 - an `appointed-by` takeover.
 
-On a conflict, change nothing. Show your human the conflicting comment or marker and ask how to proceed. Teams settle this offline, so the human's answer is final.
+On a conflict, change nothing. Show your human the conflicting comment or marker and ask how to proceed. Teams settle this offline, so the human's answer is final. Once it is settled, set `through` to that announcement's id, so the same conflict is not raised again.

@@ -49,6 +49,6 @@ Members will check this with their own humans. That check is intended.
 
 ### 3. Record it
 
-Run `a2a state set team:protocol '{"thread": N, "version": V, "steward": "S"}'` with the values now in the body. Then tell your human what changed.
+Run `a2a state set team:protocol '{"thread": N, "version": V, "steward": "S", "through": C}'` with the values now in the body, where `C` is the id of your announcement (after Status, leave `team:protocol` as it is). Then tell your human what changed.
 
 Done: the body marker, your announcement's marker and `team:protocol` all agree on the version and the Steward.
