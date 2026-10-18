@@ -2,19 +2,27 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Iterable
 
 from a2a import fsio
 from a2a.text import truncate_display
+from a2a.thread import format_thread, parse_thread
 from a2a.timeutil import fmt_short, parse_iso
 
 LIST_SNIPPET_COLS = 60
 MIN_TYPE_COL = 8
+ENTRY_ID_RE = re.compile(r"[a-z]-\d+")
 
 
 class InboxError(Exception):
     pass
+
+
+def _owner(entry: dict) -> str | None:
+    repo = entry.get("repo")
+    return repo.casefold() if repo else None
 
 
 class InboxStore:
@@ -66,21 +74,20 @@ class InboxStore:
     def count(self, unread: bool = False) -> int:
         return len(self.list(unread=unread))
 
-    def ack(self, targets: Iterable[str] = (), all_: bool = False) -> list[str]:
-        """Mark entries Read by id, `#number`, or all; returns the ids newly acked."""
+    def ack(self, targets: Iterable[str] = (), all_: bool = False, repos: list[str] = ()) -> list[str]:
+        """Mark entries Read by id, Thread (parsed against `repos`), or all; returns the ids newly acked."""
         entries = self.entries()
         if all_:
             wanted = [e["id"] for e in entries]
         else:
             wanted = []
             for t in targets:
-                if t.startswith("#"):
-                    try:
-                        number = int(t[1:])
-                    except ValueError as err:
-                        raise InboxError(f"not a thread number: {t!r}") from err
-                    # A Thread may simply have no entries yet, so `#N` never errors.
-                    ids = [e["id"] for e in entries if e.get("number") == number]
+                if not ENTRY_ID_RE.fullmatch(t):
+                    ref = parse_thread(t, list(repos))
+                    # Entries written before `repo` existed answer only to a bare number.
+                    owners = {ref.repo.casefold(), None} if ref.bare else {ref.repo.casefold()}
+                    # A Thread may simply have no entries yet, so a Thread never errors.
+                    ids = [e["id"] for e in entries if e.get("number") == ref.number and _owner(e) in owners]
                 else:
                     ids = [e["id"] for e in entries if e["id"] == t]
                     if not ids:
@@ -98,7 +105,7 @@ def format_lines(entries: list[dict]) -> list[str]:
     """Fixed-format, column-aligned one-line-per-entry view."""
     if not entries:
         return []
-    nums = [f"#{e['number']}" for e in entries]
+    nums = [format_thread(e.get("repo"), e["number"]) for e in entries]
     num_w = max(len(n) for n in nums)
     type_w = max(MIN_TYPE_COL, *(len(e["type"]) for e in entries))
     author_w = max(len(e.get("author", "")) for e in entries)

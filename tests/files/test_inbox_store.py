@@ -5,12 +5,19 @@ import pytest
 from a2a.inbox import InboxError, InboxStore
 
 
+REPOS = ["org/repo"]
+
+
 def make_entries():
     return [
-        {"id": "i-1", "ts": "2026-10-17T10:00:00Z", "type": "issue_opened", "number": 5, "author": "alice", "snippet": "a"},
-        {"id": "c-2", "ts": "2026-10-17T11:00:00Z", "type": "comment", "number": 5, "author": "bob", "snippet": "b"},
-        {"id": "e-3", "ts": "2026-10-17T12:00:00Z", "type": "assigned", "number": 9, "author": "carol", "snippet": "c"},
-        {"id": "r-4", "ts": "2026-10-17T13:00:00Z", "type": "review", "number": 9, "author": "dan", "snippet": "d"},
+        {"id": "i-1", "ts": "2026-10-17T10:00:00Z", "type": "issue_opened", "repo": "org/repo", "number": 5,
+         "author": "alice", "snippet": "a"},
+        {"id": "c-2", "ts": "2026-10-17T11:00:00Z", "type": "comment", "repo": "org/repo", "number": 5,
+         "author": "bob", "snippet": "b"},
+        {"id": "e-3", "ts": "2026-10-17T12:00:00Z", "type": "assigned", "repo": "org/repo", "number": 9,
+         "author": "carol", "snippet": "c"},
+        {"id": "r-4", "ts": "2026-10-17T13:00:00Z", "type": "review", "repo": "org/repo", "number": 9,
+         "author": "dan", "snippet": "d"},
     ]
 
 
@@ -36,7 +43,7 @@ def test_list_filters(store):
 def test_ack_by_id_number_and_all(store, tmp_a2a_dir):
     assert store.ack(["c-2"]) == ["c-2"]
     assert [e["id"] for e in store.list(unread=True)] == ["i-1", "e-3", "r-4"]
-    assert store.ack(["#9"]) == ["e-3", "r-4"]
+    assert store.ack(["#9"], repos=REPOS) == ["e-3", "r-4"]
     assert [e["id"] for e in store.list(unread=True)] == ["i-1"]
     assert store.count(unread=True) == 1
     assert store.ack(all_=True) == ["i-1"]
@@ -59,7 +66,22 @@ def test_ack_unknown_id_errors(store):
 
 
 def test_ack_thread_without_entries_acks_nothing(store):
-    assert store.ack(["#404"]) == []
+    assert store.ack(["#404"], repos=REPOS) == []
+    assert store.ack(["elsewhere/repo#5"], repos=REPOS) == []
+
+
+def test_ack_a_thread_matches_its_repo_ignoring_case(store):
+    store.append([{"id": "c-9", "ts": "2026-10-17T14:00:00Z", "type": "comment", "repo": "org/sim", "number": 5,
+                   "author": "erin", "snippet": "e"}])
+    assert store.ack(["ORG/Sim#5"], repos=["org/repo", "org/sim"]) == ["c-9"]
+    assert store.ack(["org/repo#5"], repos=["org/repo", "org/sim"]) == ["i-1", "c-2"]
+
+
+def test_entries_without_repo_ack_by_a_bare_number_only(store):
+    store.append([{"id": "c-0", "ts": "2026-10-17T09:00:00Z", "type": "comment", "number": 9, "author": "old",
+                   "snippet": "z"}])
+    assert store.ack(["org/repo#9"], repos=REPOS) == ["e-3", "r-4"]
+    assert store.ack(["9"], repos=REPOS) == ["c-0"]
 
 
 def test_ack_failure_before_replace_keeps_acks(store, tmp_a2a_dir, monkeypatch):

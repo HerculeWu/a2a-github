@@ -18,6 +18,7 @@ from a2a.timeutil import parse_duration, parse_iso
 from a2a.watch import run_daemon, run_round, watch_lock
 from a2a.notify import NotifyError, notify
 from a2a.state import StateStore, compact, format_value, parse_value
+from a2a.thread import ThreadNameError
 from a2a.workspace import ConfigError, Workspace, find_workspace, init_target, init_workspace
 
 
@@ -112,6 +113,7 @@ def inbox_store(app: App) -> InboxStore:
 
 
 def cmd_inbox(app: App, args) -> Result:
+    cfg = app.config()  # also how a caller checks that config.toml still loads
     store = inbox_store(app)
     if args.inbox_cmd == "list":
         types = [t.strip() for t in args.type.split(",") if t.strip()] if args.type else None
@@ -121,8 +123,8 @@ def cmd_inbox(app: App, args) -> Result:
         n = store.count(unread=args.unread)
         return Result(text=str(n), data={"count": n})
     if not args.all and not args.targets:
-        app.args._parser_ack.error("give entry ids, #numbers, or --all")
-    new = store.ack(args.targets, all_=args.all)
+        app.args._parser_ack.error("give entry ids, threads (owner/name#N), or --all")
+    new = store.ack(args.targets, all_=args.all, repos=cfg.repos)
     return Result(text=f"acked {len(new)}", data={"acked": new})
 
 
@@ -220,7 +222,8 @@ def build_parser() -> argparse.ArgumentParser:
     co = isub.add_parser("count", parents=[common], help="print the number of entries")
     co.add_argument("--unread", action="store_true", help="count only unread entries")
     ack = isub.add_parser("ack", parents=[common], help="mark entries read")
-    ack.add_argument("targets", nargs="*", metavar="ID|#N", help="entry id, or #N for every entry of thread N")
+    ack.add_argument("targets", nargs="*", metavar="ID|THREAD",
+                     help="entry id, or owner/name#N for every entry of that thread (#N when repos has one entry)")
     ack.add_argument("--all", action="store_true", help="mark every entry read")
     ack.set_defaults(_parser_ack=ack)
     p.set_defaults(func=cmd_inbox)
@@ -276,7 +279,7 @@ def main(argv: list[str] | None = None, gh_factory: Callable[[], Any] = make_gh)
         for w in app.warnings:
             print(f"a2a: warning: {w}", file=sys.stderr)
         print(f"a2a: error: {e}", file=sys.stderr)
-        return 1
+        return 2 if isinstance(e, ThreadNameError) else 1
     for w in app.warnings:
         print(f"a2a: warning: {w}", file=sys.stderr)
     emit(result, getattr(args, "json", False))
