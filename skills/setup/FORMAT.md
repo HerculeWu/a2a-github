@@ -7,6 +7,7 @@ Shared reference for the `setup` and `protocol` skills. `REPO` is `repo` in the 
 - **Find it:** `gh issue list -R REPO --label a2a:protocol --state open --json number,body`. Only open issues count. When several are open, the lowest number is canonical.
 - **Its comments:** `gh api --paginate repos/REPO/issues/N/comments --jq '.[] | {id, login: .user.login, created_at, body}'`.
 - **Author** of a body or comment: the NAME in its `<!-- a2a:from=NAME -->` marker, or the `login` when it has no marker.
+- **A read that fails** (a non-zero `gh` exit, a network error, or empty output where a body or marker must be) tells you nothing. In particular, it never means "no Protocol Thread", "not the Steward" or "no announcements". Retry it, and if it keeps failing, report the error to your human and stop.
 
 ## Claiming the Protocol Thread
 
