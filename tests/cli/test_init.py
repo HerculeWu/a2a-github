@@ -86,3 +86,17 @@ def test_load_config_rejects_bad_values(tmp_path):
         except ConfigError:
             continue
         raise AssertionError(f"accepted: {body!r}")
+
+
+def test_init_shared_login_disables_assignee(run_cli, tmp_path):
+    run_cli("init", "--me", "agent-x")
+    cfg = tomllib.loads((tmp_path / ".a2a" / "config.toml").read_text())
+    assert cfg["filters"]["assignee"] is False
+    assert cfg["filters"]["labels"] == ["pin:agent-x"]
+    assert "assignee" not in run_cli("state", "dump").stderr
+
+
+def test_init_own_account_keeps_assignee(run_cli, tmp_path):
+    run_cli("init")
+    cfg = tomllib.loads((tmp_path / ".a2a" / "config.toml").read_text())
+    assert cfg["filters"]["assignee"] is True

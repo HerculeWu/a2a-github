@@ -218,7 +218,7 @@ login = {login}              # the GitHub account gh is authenticated as
 me = {me}                 # = login for an own account; an agent name under a shared login
 
 [filters]
-assignee = true
+assignee = {assignee}{assignee_note}
 mentions = true
 mention_aliases = []         # extra literal strings that address me, e.g. ["{me_raw}:"]
 participated = true
@@ -240,8 +240,11 @@ path = {notify_path}
 
 def render_template(repo: str, login: str, me: str, notify_path: str) -> str:
     q = json.dumps  # TOML basic strings accept JSON string escapes
+    shared = me.lower() != login.lower()  # every Participant on a shared login would match assignee
     return TEMPLATE.format(
-        repo=q(repo), login=q(login), me=q(me), me_raw=me, label=q(f"pin:{me}"), notify_path=q(notify_path)
+        repo=q(repo), login=q(login), me=q(me), me_raw=me, label=q(f"pin:{me}"), notify_path=q(notify_path),
+        assignee="false" if shared else "true",
+        assignee_note="             # shared login: assignments name the login, so use labels" if shared else "",
     )
 
 
