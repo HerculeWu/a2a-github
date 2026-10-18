@@ -19,7 +19,7 @@ The Participant a given Workspace acts for, named by `me` in its config. Equals 
 _Avoid_: Self, owner, current user
 
 **Workspace**:
-One `.a2a/` directory: one Me, one repository, one Inbox, one State.
+One `.a2a/` directory: one Me acting through one Login, one Inbox, one State, observing one or more repositories.
 _Avoid_: Profile, home, data dir
 
 **Signature**:
@@ -29,6 +29,20 @@ _Avoid_: Tag, stamp, header
 **Author**:
 The Participant an Activity is attributed to: the name in its Signature if it has one, otherwise its Login. Activities that carry no text, such as labeling or assigning, are always attributed to the Login.
 _Avoid_: Actor, sender, poster
+
+### Project
+
+**Project**:
+The repositories whose work serves one deliverable, carried by one Team: exactly one Home Repository and any number of Linked Repositories. A single-repository setup is a Project of its Home alone.
+_Avoid_: Workspace (that is one `.a2a/`), organization, monorepo
+
+**Home Repository**:
+The repository that holds a Project's deliverable, such as the paper of a research project. The Team lives there, and every Participant can read it.
+_Avoid_: Main repo, hub, primary, root
+
+**Linked Repository**:
+A repository whose work feeds the Project's deliverable, such as simulation, analysis or database operations. It belongs to one Project at a time. A Participant may be able to read only some Linked Repositories.
+_Avoid_: Satellite, child repo, secondary repo
 
 ### Team
 
@@ -41,7 +55,7 @@ The team's own agreement about what a Participant declares when it joins, such a
 _Avoid_: Rules, charter, policy
 
 **Protocol Thread**:
-The single issue whose body is the Protocol. The team joins and is told about Protocol changes in its comments.
+The single issue in the Home Repository whose body is the Protocol. The team joins and is told about Protocol changes in its comments.
 _Avoid_: Roster issue, team issue
 
 **Steward**:
@@ -63,7 +77,7 @@ The kind of an Activity: `issue_opened`, `pr_opened`, `comment`, `review`, `assi
 _Avoid_: Kind, category
 
 **Thread**:
-An issue or a PR together with its comments and reviews, identified by its number. Issues and PRs share one number space.
+An issue or a PR together with its comments and reviews, identified by its repository and number and written `owner/name#N`. Issues and PRs in one repository share one number space.
 _Avoid_: Conversation, ticket
 
 **Watch Round**:
@@ -127,7 +141,7 @@ Pushing a one-line Digest of unread Inbox Entries to a Sink.
 _Avoid_: Alert, ping
 
 **Digest**:
-The one-line text that Notify sends, e.g. `inbox: 3 unread — #123 comment(alice), #130 assigned`. Notify sends a Digest only when there are unread Inbox Entries it has not already announced.
+The one-line text that Notify sends, e.g. `inbox: 3 unread — lab/paper#123 comment(alice), lab/sim#130 assigned`. Notify sends a Digest only when there are unread Inbox Entries it has not already announced.
 _Avoid_: Summary, report
 
 **Sink**:
@@ -140,11 +154,13 @@ _Avoid_: Memory, cache, config
 
 ## Relationships
 
-- A **Workspace** belongs to exactly one **Me** and one repository.
+- A **Workspace** belongs to exactly one **Me** and one **Login**, and observes one or more repositories through that Login. Each **Me** has exactly one Workspace, however many checkouts it works in.
 - A **Watch Round** turns **Activities** into **Inbox Entries** when they produce a **Match**; every considered Activity enters **Seen** whether or not it matched.
-- An **Inbox Entry** refers to one **Thread** by number; a Thread can have many Inbox Entries.
+- An **Inbox Entry** refers to one **Thread** by repository and number; a Thread can have many Inbox Entries.
 - An Activity becomes an **Inbox Entry** only if it Matches and no **Exclusion** applies; by default Activity whose **Author** is **Me** is excluded.
+- A **Workspace** has one set of **Filter Rules** and **Exclusions**, applied alike to every repository it observes.
 - **Seen** belongs to the watcher; **Read** belongs to the consumer. They are independent.
 - **Notify** reads the **Inbox**, never the repository.
-- A repository has at most one open **Protocol Thread**; each **Participant** in the team has exactly one **Join Comment** in it.
+- A **Project** has one **Team**, and its only open **Protocol Thread** is in its **Home Repository**; each **Participant** in the team has exactly one **Join Comment** in it.
+- A **Project**'s **Linked Repositories** are listed in its **Protocol**; only the **Steward** changes that list.
 - A **Protocol** change counts only when the **Steward** of the previous version announces it in the Protocol Thread.
