@@ -57,13 +57,13 @@ class App:
 
 def cmd_init(app: App, args) -> Result:
     gh = app.gh
-    repo = args.repo
-    if not repo:
+    repos = args.repo
+    if not repos:
         try:
-            repo = gh.run("repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner").strip()
+            repos = [gh.run("repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner").strip()]
         except GhError:
-            repo = "org/repo"
-            app.warn('could not detect the repository; edit "repo" in config.toml')
+            repos = ["org/repo"]
+            app.warn('could not detect the repository; edit "repos" in config.toml')
     try:
         login = gh.api("user").body["login"]
     except (GhError, KeyError, TypeError):
@@ -76,9 +76,16 @@ def cmd_init(app: App, args) -> Result:
             app.warn(f"{me!r} is a real GitHub user: @{me} mentions will notify them; consider another name")
         except GhError:
             pass
-    target = init_workspace(init_target(getattr(args, "dir", None)), repo=repo, login=login, me=me, force=args.force)
-    data = {"workspace": str(target), "repo": repo, "login": login, "me": me}
-    return Result(text=f"initialised {target} (repo {repo}, me {me})", data=data)
+    target = init_workspace(init_target(getattr(args, "dir", None)), repos=repos, login=login, me=me, force=args.force)
+    data = {"workspace": str(target), "repos": repos, "login": login, "me": me}
+    return Result(text=f"initialised {target} (repos {', '.join(repos)}, me {me})", data=data)
+
+
+def only_repo(cfg) -> str:
+    """Commands not yet taught several repositories serve a Workspace with one."""
+    if len(cfg.repos) != 1:
+        raise ConfigError("several repositories are not supported yet")
+    return cfg.repos[0]
 
 
 def cmd_state(app: App, args) -> Result:
@@ -128,6 +135,7 @@ def cmd_sign(app: App, args) -> Result:
 def cmd_watch(app: App, args) -> Result:
     ws = app.workspace()
     cfg = app.config()
+    only_repo(cfg)
     backfill = parse_duration(args.backfill) if args.backfill else timedelta(0)
     try:
         with watch_lock(ws):
@@ -161,9 +169,9 @@ def cmd_fetch(app: App, args) -> Result:
         raise ValueError("--max-chars must be positive")
     common = dict(since=since, comments_only=args.comments_only, max_chars=args.max_chars)
     if args.kind == "issue":
-        out = fetch_issue(app.gh, cfg.repo, args.number, **common)
+        out = fetch_issue(app.gh, only_repo(cfg), args.number, **common)
     else:
-        out = fetch_pr(app.gh, cfg.repo, args.number, files=args.files, diff=args.diff is not None,
+        out = fetch_pr(app.gh, only_repo(cfg), args.number, files=args.files, diff=args.diff is not None,
                        paths=args.diff or [], **common)
     return Result(text=out.text, data=out.data)
 
@@ -184,7 +192,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     p = sub.add_parser("init", parents=[common], help="create a workspace with a config template")
-    p.add_argument("--repo", help="owner/name (default: detect with gh)")
+    p.add_argument("--repo", action="append", metavar="OWNER/NAME",
+                   help="a repository to observe; repeat for several (default: detect with gh)")
     p.add_argument("--me", help="who this workspace acts for (default: the gh login)")
     p.add_argument("--force", action="store_true", help="overwrite an existing config")
     p.set_defaults(func=cmd_init)

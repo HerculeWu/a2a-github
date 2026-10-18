@@ -10,7 +10,7 @@ T = datetime(2026, 10, 17, 12, 0, tzinfo=timezone.utc)
 
 
 def cfg(me="me-bot", login=None, **filters):
-    return Config(repo="org/repo", me=me, login=login or me, filters=Filters(**filters))
+    return Config(repos=["org/repo"], me=me, login=login or me, filters=Filters(**filters))
 
 
 def thread(**kw):

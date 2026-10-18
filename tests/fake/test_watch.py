@@ -141,7 +141,7 @@ def test_thread_snapshot_fetched_when_not_in_issue_stream(ws, fake_gh):
 def test_shared_login_agent_sees_human_but_not_itself(tmp_path, fake_gh):
     from a2a.workspace import init_workspace
 
-    root = init_workspace(tmp_path / "agent-x", repo="org/repo", login="me-bot", me="agent-x")
+    root = init_workspace(tmp_path / "agent-x", repos=["org/repo"], login="me-bot", me="agent-x")
     ws = Workspace(root)
     routes = load_fixture("watch_a")
     comments_url = next(k for k in routes if "/issues/comments?" in k)

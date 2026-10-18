@@ -17,7 +17,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 def tmp_a2a_dir(tmp_path):
     """An initialised Workspace for repo `org/repo`, Me = Login = `me-bot`."""
     ws = tmp_path / ".a2a"
-    init_workspace(ws, repo="org/repo", login="me-bot", me="me-bot")
+    init_workspace(ws, repos=["org/repo"], login="me-bot", me="me-bot")
     return ws
 
 

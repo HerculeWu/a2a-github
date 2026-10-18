@@ -14,6 +14,11 @@ DIR_NAME = ".a2a"
 NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 REPO_RE = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
 SINKS = ("stdout", "file", "command")
+FILTER_KEYS = frozenset({
+    "assignee", "mentions", "mention_aliases", "participated", "labels",
+    "title_regex", "body_regex", "ignore_self", "exclude_authors",
+})
+BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class ConfigError(Exception):
@@ -53,7 +58,7 @@ class NotifyConfig:
 
 @dataclass
 class Config:
-    repo: str
+    repos: list[str]
     me: str
     login: str
     filters: Filters = field(default_factory=Filters)
@@ -146,6 +151,28 @@ def _bool(value, key: str) -> bool:
     return value
 
 
+def _repos(raw: dict) -> list[str]:
+    if "repo" in raw:
+        old = raw["repo"]
+        example = json.dumps([old] if isinstance(old, str) else raw.get("repos", ["owner/name"]))
+        raise ConfigError(f"repo was replaced by repos; write repos = {example}")
+    repos = raw.get("repos")
+    if not isinstance(repos, list) or not repos:
+        raise ConfigError('repos must be a non-empty list like ["owner/name"]')
+    seen: set[str] = set()
+    for repo in repos:
+        if not isinstance(repo, str) or not REPO_RE.match(repo):
+            raise ConfigError(f'every entry in repos must look like "owner/name", got {repo!r}')
+        if repo.casefold() in seen:
+            raise ConfigError(f"repos lists {repo!r} twice")
+        seen.add(repo.casefold())
+    return list(repos)
+
+
+def _toml_key(key: str) -> str:
+    return key if BARE_KEY_RE.match(key) else json.dumps(key)
+
+
 def load_config(path: Path) -> tuple[Config, list[str]]:
     try:
         raw = tomllib.loads(Path(path).read_text(encoding="utf-8"))
@@ -154,9 +181,7 @@ def load_config(path: Path) -> tuple[Config, list[str]]:
     except tomllib.TOMLDecodeError as e:
         raise ConfigError(f"invalid TOML in {path}: {e}") from e
 
-    repo, me = raw.get("repo"), raw.get("me")
-    if not isinstance(repo, str) or not REPO_RE.match(repo):
-        raise ConfigError(f'repo must look like "owner/name", got {repo!r}')
+    repos, me = _repos(raw), raw.get("me")
     if not isinstance(me, str) or not NAME_RE.match(me):
         raise ConfigError(f"me must match {NAME_RE.pattern}, got {me!r}")
     login = raw.get("login", me)
@@ -164,6 +189,11 @@ def load_config(path: Path) -> tuple[Config, list[str]]:
         raise ConfigError(f"login must match {NAME_RE.pattern}, got {login!r}")
 
     f = raw.get("filters", {})
+    warnings = [
+        f"unknown key filters.{_toml_key(key)} ignored; filters apply to every repository in repos"
+        for key in f
+        if key not in FILTER_KEYS
+    ]
     filters = Filters()
     for key in ("assignee", "mentions", "participated", "ignore_self"):
         if key in f:
@@ -202,8 +232,7 @@ def load_config(path: Path) -> tuple[Config, list[str]]:
         notify.command = command
     notify.require(sink)
 
-    cfg = Config(repo=repo, me=me, login=login, filters=filters, watch=WatchConfig(interval), notify=notify)
-    warnings = []
+    cfg = Config(repos=repos, me=me, login=login, filters=filters, watch=WatchConfig(interval), notify=notify)
     if cfg.shared_login and filters.assignee:
         warnings.append(
             f"filters.assignee matches every Participant sharing login {login!r}; "
@@ -213,7 +242,7 @@ def load_config(path: Path) -> tuple[Config, list[str]]:
 
 
 TEMPLATE = """\
-repo = {repo}
+repos = {repos}         # one or more owner/name to observe
 login = {login}              # the GitHub account gh is authenticated as
 me = {me}                 # = login for an own account; an agent name under a shared login
 
@@ -238,25 +267,26 @@ path = {notify_path}
 """
 
 
-def render_template(repo: str, login: str, me: str, notify_path: str) -> str:
+def render_template(repos: list[str], login: str, me: str, notify_path: str) -> str:
     q = json.dumps  # TOML basic strings accept JSON string escapes
     shared = me.lower() != login.lower()  # every Participant on a shared login would match assignee
     return TEMPLATE.format(
-        repo=q(repo), login=q(login), me=q(me), me_raw=me, label=q(f"pin:{me}"), notify_path=q(notify_path),
+        repos=q(repos), login=q(login), me=q(me), me_raw=me, label=q(f"pin:{me}"), notify_path=q(notify_path),
         assignee="false" if shared else "true",
         assignee_note="             # shared login: assignments name the login, so use labels" if shared else "",
     )
 
 
-def init_workspace(target: Path, repo: str, login: str, me: str, force: bool = False) -> Path:
+def init_workspace(target: Path, repos: list[str], login: str, me: str, force: bool = False) -> Path:
     target = Path(target)
     config_path = target / "config.toml"
     if config_path.exists() and not force:
         raise ConfigError(f"{config_path} already exists (use --force to overwrite)")
+    _repos({"repos": repos})
     for key, value in (("me", me), ("login", login)):
         if not NAME_RE.match(value):
             raise ConfigError(f"{key} must match {NAME_RE.pattern}, got {value!r}")
     target.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(render_template(repo, login, me, f"{target.name}/notify.log"), encoding="utf-8")
+    config_path.write_text(render_template(repos, login, me, f"{target.name}/notify.log"), encoding="utf-8")
     (target / ".gitignore").write_text("*\n", encoding="utf-8")
     return target

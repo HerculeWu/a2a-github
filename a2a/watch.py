@@ -116,7 +116,7 @@ def _page_on(gh, first, stream: str, floor: datetime) -> list[dict]:
 def _bootstrap_participation(gh, cfg: Config) -> set[int]:
     numbers: set[int] = set()
     for qualifier in ("author", "commenter", "reviewed-by"):
-        path = "search/issues?" + urlencode({"q": f"repo:{cfg.repo} {qualifier}:{cfg.login}", "per_page": 100})
+        path = "search/issues?" + urlencode({"q": f"repo:{cfg.repos[0]} {qualifier}:{cfg.login}", "per_page": 100})
         resp = gh.api(path)
         numbers.update(item["number"] for item in (resp.body or {}).get("items", []))
     return numbers
@@ -131,7 +131,7 @@ def run_round(
     warn: Callable[[str], None] = lambda m: None,
 ) -> RoundResult:
     now = now or utc_now()
-    urls = stream_urls(cfg.repo)
+    urls = stream_urls(cfg.repos[0])
     etags: dict[str, str] = fsio.read_json(ws.etags_path, {})
 
     probes = {name: gh.api(url, etag=etags.get(url)) for name, url in urls.items()}
@@ -179,7 +179,7 @@ def run_round(
             activities.append((a, "events"))
             threads.setdefault(a.number, thread_from_issue(item["issue"]))
     for number in sorted(review_check):
-        path = f"repos/{cfg.repo}/pulls/{number}/reviews?per_page=100"
+        path = f"repos/{cfg.repos[0]}/pulls/{number}/reviews?per_page=100"
         resp = gh.api(path)
         reviews = list(resp.body or [])
         while resp.next_url:
@@ -208,7 +208,7 @@ def run_round(
     entries = []
     for a in fresh:
         if a.number not in threads:
-            threads[a.number] = thread_from_issue(gh.api(f"repos/{cfg.repo}/issues/{a.number}").body)
+            threads[a.number] = thread_from_issue(gh.api(f"repos/{cfg.repos[0]}/issues/{a.number}").body)
         thread = threads[a.number]
         decision = evaluate(a, thread, seen.participated, cfg)
         if decision.delivered and deliverable(a):
