@@ -2,6 +2,7 @@
 
 Run: python tests/fixtures/build_fixtures.py
 Scenario A is a busy morning in org/repo as seen by me-bot; B is A plus later activity.
+Scenario multi is A plus a second repository, org/sim, whose activity interleaves with A's.
 """
 
 import json
@@ -19,9 +20,17 @@ def user(login):
     return {"login": login}
 
 
-def issue(number, title, login, created, updated, body="", labels=(), assignees=(), pr=False):
+def gh_url(repo):
+    return f"https://github.com/{repo}"
+
+
+def api_url(repo):
+    return f"https://api.github.com/repos/{repo}"
+
+
+def issue(number, title, login, created, updated, body="", labels=(), assignees=(), pr=False, repo=REPO, iid=None):
     item = {
-        "id": 1000 + number,
+        "id": iid or 1000 + number,
         "number": number,
         "title": title,
         "user": user(login),
@@ -31,22 +40,22 @@ def issue(number, title, login, created, updated, body="", labels=(), assignees=
         "state": "open",
         "created_at": created,
         "updated_at": updated,
-        "html_url": f"{GH}/{'pull' if pr else 'issues'}/{number}",
+        "html_url": f"{gh_url(repo)}/{'pull' if pr else 'issues'}/{number}",
     }
     if pr:
-        item["pull_request"] = {"url": f"{API}/pulls/{number}"}
+        item["pull_request"] = {"url": f"{api_url(repo)}/pulls/{number}"}
     return item
 
 
-def comment(cid, number, login, created, body, updated=None):
+def comment(cid, number, login, created, body, updated=None, repo=REPO):
     return {
         "id": cid,
         "user": user(login),
         "body": body,
         "created_at": created,
         "updated_at": updated or created,
-        "issue_url": f"{API}/issues/{number}",
-        "html_url": f"{GH}/issues/{number}#issuecomment-{cid}",
+        "issue_url": f"{api_url(repo)}/issues/{number}",
+        "html_url": f"{gh_url(repo)}/issues/{number}#issuecomment-{cid}",
     }
 
 
@@ -84,12 +93,16 @@ def search_path(q):
     return "search/issues?" + urlencode({"q": q, "per_page": 100})
 
 
-STREAM = {
-    "issues": f"repos/{REPO}/issues?state=all&sort=updated&direction=desc&per_page=100",
-    "comments": f"repos/{REPO}/issues/comments?sort=updated&direction=desc&per_page=100",
-    "review_comments": f"repos/{REPO}/pulls/comments?sort=updated&direction=desc&per_page=100",
-    "events": f"repos/{REPO}/issues/events?per_page=100",
-}
+def streams(repo):
+    return {
+        "issues": f"repos/{repo}/issues?state=all&sort=updated&direction=desc&per_page=100",
+        "comments": f"repos/{repo}/issues/comments?sort=updated&direction=desc&per_page=100",
+        "review_comments": f"repos/{repo}/pulls/comments?sort=updated&direction=desc&per_page=100",
+        "events": f"repos/{repo}/issues/events?per_page=100",
+    }
+
+
+STREAM = streams(REPO)
 ISSUES_PAGE2 = "repositories/1/issues?state=all&sort=updated&direction=desc&per_page=100&page=2"
 
 # --- scenario A -------------------------------------------------------------
@@ -140,6 +153,27 @@ B[STREAM["events"]] = {"etag": 'W/"b-events"', "body": [event(504, "labeled", i4
 B[f"repos/{REPO}/pulls/3/reviews?per_page=100"] = {"body": reviews3_a + [review(702, 3, "dan", D + "11:40:00Z", "")]}
 B[f"repos/{REPO}/issues/9"] = {"body": i9}
 
+
+# --- scenario multi = A + org/sim --------------------------------------------
+SIM = "org/sim"
+SIM_STREAM = streams(SIM)
+s1 = issue(1, "Sim run diverges", "gina", D + "10:25:00Z", D + "10:40:00Z", body="diverges after step 40",
+           repo=SIM, iid=2001)
+MULTI = json.loads(json.dumps(A))
+MULTI.update({
+    SIM_STREAM["issues"]: {"etag": 'W/"sim-issues"', "body": [s1], "headers": {"X-Poll-Interval": "90"}},
+    SIM_STREAM["comments"]: {"etag": 'W/"sim-comments"', "body": [
+        # sim#1 is not a Participated Thread, though org/repo#1 is
+        comment(3002, 1, "gina", D + "10:40:00Z", "never mind, found it", repo=SIM),
+        comment(3001, 1, "gina", D + "10:35:00Z", "@me-bot can you check the seed?", repo=SIM),
+    ]},
+    SIM_STREAM["review_comments"]: {"etag": 'W/"sim-rc"', "body": []},
+    SIM_STREAM["events"]: {"etag": 'W/"sim-events"', "body": []},
+    f"repos/{SIM}/issues/1": {"body": s1},
+    search_path(f"repo:{SIM} author:me-bot"): {"body": {"items": [{"number": 5}]}},
+    search_path(f"repo:{SIM} commenter:me-bot"): {"body": {"items": []}},
+    search_path(f"repo:{SIM} reviewed-by:me-bot"): {"body": {"items": []}},
+})
 
 # --- fetch scenario -----------------------------------------------------------
 SIGN = "\n\n<sub>— agent-x</sub>\n<!-- a2a:from=agent-x -->"
@@ -204,4 +238,5 @@ def write(name, routes, commands=None):
 if __name__ == "__main__":
     write("watch_a", A)
     write("watch_b", B)
+    write("watch_multi", MULTI)
     write("fetch", FETCH, {f"pr diff 3 --repo {REPO}": DIFF})

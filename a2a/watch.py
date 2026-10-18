@@ -54,10 +54,11 @@ ID_STREAM = {"i": "issues", "c": "comments", "e": "events", "r": "reviews"}
 class RoundResult:
     new: list[dict] = field(default_factory=list)
     poll_interval: int | None = None
+    failed: list[str] = field(default_factory=list)
 
 
 class Seen:
-    """Per-stream cursors, ids near them, and Participated Threads (`seen.json`)."""
+    """One repository's section of `seen.json`: per-stream cursors, ids near them, Participated Threads."""
 
     def __init__(self, data: dict):
         self.cursors: dict[str, datetime] = {k: parse_iso(v) for k, v in data.get("cursors", {}).items()}
@@ -86,12 +87,41 @@ class Seen:
             if parse_iso(ts) >= self.floor(ID_STREAM.get(i.split("-", 1)[0], "issues"))
         }
         return {
-            "version": 1,
             "initialized_at": self.initialized_at,
             "cursors": {k: fmt_iso(v) for k, v in sorted(self.cursors.items())},
             "recent": dict(sorted(recent.items())),
             "participated": sorted(self.participated),
         }
+
+
+def load_sections(data: dict | None, repos: list[str], warn: Callable[[str], None]) -> dict[str, dict]:
+    """`seen.json` sections keyed by casefolded repository; a flat 0.1 Seen is adopted or dropped."""
+    if data is None:
+        return {}
+    if "repos" not in data:
+        if len(repos) == 1:
+            return {repos[0].casefold(): data}
+        warn("seen.json predates repos and repos lists several repositories; starting a fresh baseline for each")
+        return {}
+    return {name.casefold(): section for name, section in data["repos"].items()}
+
+
+def _etag_repo(url: str) -> str:
+    parts = url.split("/")
+    return "/".join(parts[1:3]).casefold() if parts[0] == "repos" and len(parts) > 3 else ""
+
+
+@dataclass
+class RepoPart:
+    """One repository's share of a round, gathered before anything is written."""
+
+    repo: str
+    probes: dict[str, Any]
+    seen: Seen
+    first_run: bool
+    cursors: dict[str, datetime]
+    threads: dict[int, Thread]
+    fresh: list[Activity]
 
 
 def _poll_interval(resp) -> int | None:
@@ -113,36 +143,20 @@ def _page_on(gh, first, stream: str, floor: datetime) -> list[dict]:
     return items
 
 
-def _bootstrap_participation(gh, cfg: Config) -> set[int]:
+def _bootstrap_participation(gh, repo: str, login: str) -> set[int]:
     numbers: set[int] = set()
     for qualifier in ("author", "commenter", "reviewed-by"):
-        path = "search/issues?" + urlencode({"q": f"repo:{cfg.repos[0]} {qualifier}:{cfg.login}", "per_page": 100})
+        path = "search/issues?" + urlencode({"q": f"repo:{repo} {qualifier}:{login}", "per_page": 100})
         resp = gh.api(path)
         numbers.update(item["number"] for item in (resp.body or {}).get("items", []))
     return numbers
 
 
-def run_round(
-    ws: Workspace,
-    cfg: Config,
-    gh,
-    now: datetime | None = None,
-    backfill: timedelta = timedelta(0),
-    warn: Callable[[str], None] = lambda m: None,
-) -> RoundResult:
-    now = now or utc_now()
-    urls = stream_urls(cfg.repos[0])
-    etags: dict[str, str] = fsio.read_json(ws.etags_path, {})
-
-    probes = {name: gh.api(url, etag=etags.get(url)) for name, url in urls.items()}
-    intervals = [i for i in (_poll_interval(r) for r in probes.values()) if i]
-    result = RoundResult(poll_interval=max(intervals) if intervals else None)
-    if all(r.not_modified for r in probes.values()):
-        return result
-
-    seen_data = fsio.read_json(ws.seen_path, None)
-    first_run = seen_data is None
-    seen = Seen.first_run(now - backfill, now) if first_run else Seen(seen_data)
+def _gather(gh, cfg: Config, repo: str, probes: dict, section: dict | None, now: datetime,
+            backfill: timedelta, warn: Callable[[str], None]) -> RepoPart:
+    """Page, normalize and snapshot one repository; raises GhError and writes nothing."""
+    first_run = section is None
+    seen = Seen.first_run(now - backfill, now) if first_run else Seen(section)
 
     items = {
         name: [] if resp.not_modified else _page_on(gh, resp, name, seen.floor(name)) for name, resp in probes.items()
@@ -152,10 +166,10 @@ def run_round(
     activities: list[tuple[Activity, str]] = []
     review_check: set[int] = set()
     inline_by_review: dict[int, list[dict]] = {}
-    new_cursor = dict(seen.cursors)
+    cursors = dict(seen.cursors)
 
     def advance(stream: str, ts: str) -> None:
-        new_cursor[stream] = max(new_cursor[stream], parse_iso(ts))
+        cursors[stream] = max(cursors[stream], parse_iso(ts))
 
     for item in items["issues"]:
         threads[item["number"]] = thread_from_issue(item)
@@ -179,7 +193,7 @@ def run_round(
             activities.append((a, "events"))
             threads.setdefault(a.number, thread_from_issue(item["issue"]))
     for number in sorted(review_check):
-        path = f"repos/{cfg.repos[0]}/pulls/{number}/reviews?per_page=100"
+        path = f"repos/{repo}/pulls/{number}/reviews?per_page=100"
         resp = gh.api(path)
         reviews = list(resp.body or [])
         while resp.next_url:
@@ -192,30 +206,73 @@ def run_round(
                 advance("reviews", r["submitted_at"])
                 activities.append((a, "reviews"))
 
-    fresh = sorted((a for a, stream in activities if seen.is_new(a, stream)), key=lambda a: a.sort_key)
+    fresh = [a for a, stream in activities if seen.is_new(a, stream)]
+    for a in fresh:
+        if a.number not in threads:
+            threads[a.number] = thread_from_issue(gh.api(f"repos/{repo}/issues/{a.number}").body)
 
     if first_run and cfg.filters.participated and not cfg.shared_login:
         try:
-            seen.participated |= _bootstrap_participation(gh, cfg)
+            seen.participated |= _bootstrap_participation(gh, repo, cfg.login)
         except GhError as e:
-            warn(f"could not bootstrap participated threads from search: {e}")
+            warn(f"{repo}: could not bootstrap participated threads from search: {e}")
+
+    return RepoPart(repo, probes, seen, first_run, cursors, threads, fresh)
+
+
+def run_round(
+    ws: Workspace,
+    cfg: Config,
+    gh,
+    now: datetime | None = None,
+    backfill: timedelta = timedelta(0),
+    warn: Callable[[str], None] = lambda m: None,
+) -> RoundResult:
+    now = now or utc_now()
+    etags: dict[str, str] = fsio.read_json(ws.etags_path, {})
+    result = RoundResult()
+
+    def fail(repo: str, e: GhError) -> None:
+        warn(f"{repo} skipped this round: {e}")
+        result.failed.append(repo)
+
+    probed: dict[str, dict] = {}
+    for repo in cfg.repos:
+        urls = stream_urls(repo)
+        try:
+            probed[repo] = {name: gh.api(url, etag=etags.get(url)) for name, url in urls.items()}
+        except GhError as e:
+            fail(repo, e)
+    intervals = [i for probes in probed.values() for i in (_poll_interval(r) for r in probes.values()) if i]
+    result.poll_interval = max(intervals) if intervals else None
+    # A repository whose probes all return 304 is done; when every one is, nothing is read or written.
+    active = {repo: probes for repo, probes in probed.items() if not all(r.not_modified for r in probes.values())}
+    if not active:
+        return result
+
+    sections = load_sections(fsio.read_json(ws.seen_path, None), cfg.repos, warn)
+    parts: list[RepoPart] = []
+    for repo, probes in active.items():
+        try:
+            parts.append(_gather(gh, cfg, repo, probes, sections.get(repo.casefold()), now, backfill, warn))
+        except GhError as e:
+            fail(repo, e)
 
     # The first round is a baseline: everything it sees already existed, so it only enters Seen.
     # An explicit Backfill is the one way to deliver part of it.
-    def deliverable(a: Activity) -> bool:
-        return not first_run or (backfill > timedelta(0) and a.ts >= now - backfill)
+    def deliverable(a: Activity, part: RepoPart) -> bool:
+        return not part.first_run or (backfill > timedelta(0) and a.ts >= now - backfill)
 
+    merged = sorted(((a, part) for part in parts for a in part.fresh), key=lambda ap: ap[0].sort_key)
     entries = []
-    for a in fresh:
-        if a.number not in threads:
-            threads[a.number] = thread_from_issue(gh.api(f"repos/{cfg.repos[0]}/issues/{a.number}").body)
-        thread = threads[a.number]
-        decision = evaluate(a, thread, seen.participated, cfg)
-        if decision.delivered and deliverable(a):
-            entries.append(to_entry(a, thread, decision.matched))
+    for a, part in merged:
+        thread = part.threads[a.number]
+        decision = evaluate(a, thread, part.seen.participated, cfg)
+        if decision.delivered and deliverable(a, part):
+            entries.append(to_entry(a, thread, decision.matched, part.repo))
         if a.type in ("issue_opened", "pr_opened", "comment", "review") and a.author.casefold() == cfg.me.casefold():
-            seen.participated.add(a.number)
-        seen.recent[a.id] = fmt_iso(a.ts)
+            part.seen.participated.add(a.number)
+        part.seen.recent[a.id] = fmt_iso(a.ts)
 
     store = InboxStore(ws.inbox_path, ws.acks_path)
     added_ids = set()
@@ -225,11 +282,20 @@ def run_round(
         added_ids = {e["id"] for e in entries} - before
     result.new = [e for e in entries if e["id"] in added_ids]
 
-    seen.cursors = new_cursor
-    fsio.atomic_write_json(ws.seen_path, seen.to_json())
-    for name, resp in probes.items():
-        if not resp.not_modified and resp.etag:
-            etags[urls[name]] = resp.etag
+    # Repositories that were done or failed keep their section; dropped ones lose it.
+    for part in parts:
+        part.seen.cursors = part.cursors
+        sections[part.repo.casefold()] = part.seen.to_json()
+    saved = {repo: sections[repo.casefold()] for repo in cfg.repos if repo.casefold() in sections}
+    fsio.atomic_write_json(ws.seen_path, {"repos": saved})
+    # ETags are worth keeping only for repositories that have a Seen section.
+    kept = {r.casefold() for r in saved}
+    etags = {url: tag for url, tag in etags.items() if _etag_repo(url) in kept}
+    for part in parts:
+        urls = stream_urls(part.repo)
+        for name, resp in part.probes.items():
+            if not resp.not_modified and resp.etag:
+                etags[urls[name]] = resp.etag
     fsio.atomic_write_json(ws.etags_path, etags)
     return result
 
@@ -257,16 +323,16 @@ def run_daemon(
     try:
         while not stop["flag"] and (max_rounds is None or rounds < max_rounds):
             rounds += 1
-            try:
-                result = run_round(ws, cfg, gh, backfill=backfill, warn=warn)
-                backfill = timedelta(0)
+            # Backfill only shapes a repository's first run, so it stays on for one whose first round failed.
+            result = run_round(ws, cfg, gh, backfill=backfill, warn=warn)
+            if len(result.failed) == len(cfg.repos):
+                backoff = min(MAX_BACKOFF, max(interval, backoff * 2 or interval))
+                warn(f"every repository failed; retrying in {backoff}s")
+                delay = backoff
+            else:
                 backoff = 0
                 on_round(result)
                 delay = max(interval, result.poll_interval or 0)
-            except GhError as e:
-                backoff = min(MAX_BACKOFF, max(interval, backoff * 2 or interval))
-                warn(f"{e}; retrying in {backoff}s")
-                delay = backoff
             if max_rounds is not None and rounds >= max_rounds:
                 break
             sleep(delay)

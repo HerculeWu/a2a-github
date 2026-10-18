@@ -135,7 +135,6 @@ def cmd_sign(app: App, args) -> Result:
 def cmd_watch(app: App, args) -> Result:
     ws = app.workspace()
     cfg = app.config()
-    only_repo(cfg)
     backfill = parse_duration(args.backfill) if args.backfill else timedelta(0)
     try:
         with watch_lock(ws):
@@ -148,7 +147,7 @@ def cmd_watch(app: App, args) -> Result:
             if args.once:
                 result = run_round(ws, cfg, app.gh, backfill=backfill, warn=app.warn)
                 after_round(result)
-                return Result(text=str(len(result.new)), data={"new": result.new})
+                return Result(text=str(len(result.new)), data={"new": result.new}, code=1 if result.failed else 0)
 
             def on_round(result):
                 after_round(result)

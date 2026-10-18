@@ -154,7 +154,7 @@ def test_init_rejects_a_malformed_repo(run_cli, tmp_path):
 
 def test_commands_without_their_slice_refuse_several_repos(run_cli, tmp_path):
     run_cli("init", "--repo", "lab/paper", "--repo", "lab/sim")
-    for args in (("fetch", "issue", "2"), ("watch", "--once")):
+    for args in (("fetch", "issue", "2"),):
         proc = run_cli(*args, check=False)
         assert proc.returncode == 1
         assert "several repositories are not supported yet" in proc.stderr

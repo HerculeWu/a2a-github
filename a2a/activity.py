@@ -163,11 +163,12 @@ def entry_snippet(a: Activity) -> str:
     return a.type
 
 
-def to_entry(a: Activity, thread: Thread, matched_rules: list[str]) -> dict:
+def to_entry(a: Activity, thread: Thread, matched_rules: list[str], repo: str) -> dict:
     return {
         "id": a.id,
         "ts": fmt_iso(a.ts),
         "type": a.type,
+        "repo": repo,
         "number": a.number,
         "author": a.author,
         "login": a.login,

@@ -43,6 +43,7 @@ def test_scenario_a_produces_expected_inbox(ws, fake_gh):
         "id": "c-102",
         "ts": "2026-10-17T10:15:00Z",
         "type": "comment",
+        "repo": "org/repo",
         "number": 2,
         "author": "alice",
         "login": "alice",
@@ -60,7 +61,7 @@ def test_scenario_a_produces_expected_inbox(ws, fake_gh):
     # the issues stream needed its second page
     assert any(c["path"].endswith("&page=2") for c in gh.calls)
     # participation was bootstrapped from search and from me-bot's own comment
-    seen = json.loads(ws.seen_path.read_text())
+    seen = json.loads(ws.seen_path.read_text())["repos"]["org/repo"]
     assert set(seen["participated"]) == {1, 9}
 
 
@@ -118,7 +119,7 @@ def test_first_run_without_backfill_delivers_nothing_even_minutes_old(ws, fake_g
     # The latest fixture Activity is at 10:30, inside the overlap window below a 10:35 cursor.
     just_after = datetime(2026, 10, 17, 10, 35, tzinfo=timezone.utc)
     assert round_(ws, fake_gh("watch_a"), now=just_after, backfill=timedelta(0)).new == []
-    assert "c-103" in fsio.read_json(ws.seen_path, {})["recent"]
+    assert "c-103" in fsio.read_json(ws.seen_path, {})["repos"]["org/repo"]["recent"]
 
 
 def test_first_run_backfill_delivers_only_from_its_start(ws, fake_gh):
@@ -159,7 +160,7 @@ def test_shared_login_agent_sees_human_but_not_itself(tmp_path, fake_gh):
     # shared login: no search bootstrap
     assert not any(c["path"].startswith("search/") for c in gh.calls)
     # agent-x participated in #1 through its signed comment
-    assert 1 in json.loads(ws.seen_path.read_text())["participated"]
+    assert 1 in json.loads(ws.seen_path.read_text())["repos"]["org/repo"]["participated"]
 
 
 def test_daemon_sleeps_by_poll_interval_and_backs_off_on_errors(ws, fake_gh):
