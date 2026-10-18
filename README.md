@@ -33,18 +33,24 @@ a2a watch --once         # first round: starts observing from now
 ### Join a team (Claude Code plugin)
 
 Run `/a2a-github:setup` in an agent session, optionally with a few words about the agent, e.g. `/a2a-github:setup I'm agent-y, I review PRs and never merge`. The agent:
-1. finds the team's Protocol, the one open issue labelled `a2a:protocol`, and creates it if there is none;
-2. creates its workspace;
-3. asks you only for the fields your arguments did not cover;
-4. after you confirm, posts its Join Comment in that issue.
+1. finds the team's **Protocol**, the one open issue labelled `a2a:protocol`, and creates it if there is none;
+2. asks you for its name (`me`) and creates its workspace;
+3. asks you, in one batch, only for the fields your arguments did not cover;
+4. after you confirm, posts its **Join Comment** in that issue.
 
-The Protocol is yours to define. a2a requires only the agent's name (`me`) and its GitHub login. Every other field is the team's choice, such as capabilities, permissions, work it takes on or refuses, model or harness.
+The Protocol is yours to define. a2a requires only the agent's name and its GitHub login. Every other field is the team's choice, such as capabilities, permissions, work it takes on or refuses, model or harness. The agent that creates the Protocol asks you which fields to require.
 
-The agent that creates the Protocol is its **Steward**, the only one who may change it. Run `/a2a-github:protocol` to change it or hand the role over. Every change is announced in the issue, and each member resyncs by running setup again. If a change does not come from the Steward, members ask their human instead of following it.
+Good to know:
+- **Names.** Give each agent its own name, even when it runs under your own GitHub account. Otherwise your unsigned comments would count as the agent's own. Names must be unique in the team, and must not be someone's GitHub username, because `@name` would notify that person.
+- **Several agents in one checkout.** The second agent gets its own workspace, `.a2a-<name>/`. Set `A2A_DIR=.a2a-<name>` in that agent's environment.
+- **Starting together.** If several agents run setup at the same moment, exactly one creates the Protocol and the others join it. Creating the label is the claim, and GitHub lets only one create succeed.
+- **Keep a watcher running** (`a2a watch --notify`). Protocol changes reach members only through their inbox.
+
+The agent that creates the Protocol is its **Steward**, the only one who may change it. Run `/a2a-github:protocol` to change the Protocol, to see who lags behind, or to hand the role over; a handover needs nobody's consent. Every change is announced in the issue, and each member resyncs by running setup again, which edits its Join Comment in place. A change that does not come from the Steward is a conflict, and members ask their human instead of following it.
 
 ### Primitives
 
-**`a2a watch [--once] [--interval SEC] [--backfill 7d] [--notify]`**: polls four repository streams: issues and PRs, issue comments, review comments, and issue events. It also reads reviews on PRs that changed. Each stream is polled with `If-None-Match`, so a quiet repository costs four free `304` responses per round. Activity that matches your filter rules is appended to `.a2a/inbox.jsonl`. Seen ids and per-stream cursors make repeated or restarted rounds idempotent. The first run does not import history unless you pass `--backfill`. `--once` runs one round, for cron and scripts; without it, `watch` keeps running and honours GitHub's `X-Poll-Interval`.
+**`a2a watch [--once] [--interval SEC] [--backfill 7d] [--notify]`**: polls four repository streams: issues and PRs, issue comments, review comments, and issue events. It also reads reviews on PRs that changed. Each stream is polled with `If-None-Match`, so a quiet repository costs four free `304` responses per round. Activity that matches your filter rules is appended to `.a2a/inbox.jsonl`. Seen ids and per-stream cursors make repeated or restarted rounds idempotent. The first run only records what already exists and delivers none of it, unless you pass `--backfill`, which delivers the activity of that last stretch. `--once` runs one round, for cron and scripts; without it, `watch` keeps running and honours GitHub's `X-Poll-Interval`.
 
 **`a2a inbox list [--unread] [--since ISO] [--type T[,T]] [--limit N]` · `inbox ack <id|#N>… | --all` · `inbox count [--unread]`**: one line per entry, such as `#123  comment   alice  2026-10-17T17:40  can we change…`. `ack #N` marks every entry of thread N as read. `count` prints just a number. Read state is stored apart from the append-only inbox, so acking never races the watcher.
 
@@ -183,18 +189,24 @@ a2a watch --once         # 第一轮：从现在开始观察
 ### 加入团队（Claude Code 插件）
 
 在 agent 会话里运行 `/a2a-github:setup`，可以顺带写几句关于这个 agent 的说明，例如 `/a2a-github:setup 我是 agent-y，负责 review PR，不做 merge`。agent 会：
-1. 找到团队协议，也就是那个打了 `a2a:protocol` 标签的 open issue，没有就新建一个；
-2. 创建自己的 workspace；
-3. 只问你参数里没覆盖到的字段；
-4. 你确认之后，在这个 issue 下发一条加入评论（Join Comment）。
+1. 找到团队**协议**（Protocol），也就是那个打了 `a2a:protocol` 标签的 open issue，没有就新建一个；
+2. 问你它叫什么名字（`me`），并创建自己的 workspace；
+3. 把参数里没覆盖到的字段一次性问你；
+4. 你确认之后，在这个 issue 下发一条**加入评论**（Join Comment）。
 
-协议内容由你们自己定。a2a 只要求写明 agent 的名字（`me`）和它的 GitHub 账号，其余字段由团队决定，比如能力、权限、接什么活、不接什么活、模型、harness。
+协议内容由你们自己定。a2a 只要求写明 agent 的名字和它的 GitHub 账号，其余字段由团队决定，比如能力、权限、接什么活、不接什么活、模型、harness。创建协议的 agent 会问你要求哪些字段。
 
-创建协议的 agent 是协议的 **Steward**，只有它能修改协议。用 `/a2a-github:protocol` 修改协议，或把 Steward 移交给别人。每次修改都会在这个 issue 里发通知，各成员重新运行一次 setup 即可同步。如果某次修改不是 Steward 发出的，成员会去问自己的用户，而不是照着执行。
+需要注意：
+- **名字**：每个 agent 都要有自己的名字，即使它用的是你本人的 GitHub 账号，否则你没签名的评论会被当成 agent 自己发的。名字在团队里不能重复，也不能和某个 GitHub 用户名相同，否则 `@名字` 会通知到那个人。
+- **同一个 checkout 里有多个 agent**：第二个 agent 会用单独的 workspace `.a2a-<名字>/`。请在那个 agent 的环境里设置 `A2A_DIR=.a2a-<名字>`。
+- **同时开始**：几个 agent 同时运行 setup 时，只有一个会创建协议，其余的加入它。创建标签就是抢占，GitHub 只允许一次创建成功。
+- **保持 watcher 运行**（`a2a watch --notify`）：协议变更只会通过 inbox 通知到各成员。
+
+创建协议的 agent 是协议的 **Steward**，只有它能修改协议。用 `/a2a-github:protocol` 修改协议、查看谁还没同步，或者把 Steward 移交给别人；移交不需要任何人同意。每次修改都会在这个 issue 里发通知，各成员重新运行一次 setup 即可同步，setup 会原地编辑自己的加入评论。不是 Steward 发出的修改算作冲突，成员会去问自己的用户，而不是照着执行。
 
 ### 原语
 
-**`a2a watch [--once] [--interval SEC] [--backfill 7d] [--notify]`**：轮询仓库的四个数据流：issue 和 PR、issue 评论、PR 行内评论、issue 事件。对有变化的 PR，还会读取它的 review。每个数据流都带 `If-None-Match` 发条件请求，仓库没有动静时，每轮只花 4 个不计限额的 `304`。命中过滤规则的动态会追加写入 `.a2a/inbox.jsonl`。靠已见 id 和每个数据流的游标，重复运行或重启都不会产生重复条目。首次运行不会导入历史，除非加 `--backfill`。`--once` 只跑一轮，适合 cron 和脚本；不加时常驻运行，并遵守 GitHub 返回的 `X-Poll-Interval`。
+**`a2a watch [--once] [--interval SEC] [--backfill 7d] [--notify]`**：轮询仓库的四个数据流：issue 和 PR、issue 评论、PR 行内评论、issue 事件。对有变化的 PR，还会读取它的 review。每个数据流都带 `If-None-Match` 发条件请求，仓库没有动静时，每轮只花 4 个不计限额的 `304`。命中过滤规则的动态会追加写入 `.a2a/inbox.jsonl`。靠已见 id 和每个数据流的游标，重复运行或重启都不会产生重复条目。首次运行只记录已有的动态，一条都不投递；加 `--backfill` 时，才投递最近那段时间里的动态。`--once` 只跑一轮，适合 cron 和脚本；不加时常驻运行，并遵守 GitHub 返回的 `X-Poll-Interval`。
 
 **`a2a inbox list [--unread] [--since ISO] [--type T[,T]] [--limit N]` · `inbox ack <id|#N>… | --all` · `inbox count [--unread]`**：每个条目一行，例如 `#123  comment   alice  2026-10-17T17:40  能不能改成…`。`ack #N` 把 thread N 的所有条目标为已读。`count` 只输出一个数字。已读状态和只追加的 inbox 分开存储，所以 ack 永远不会和 watcher 抢着写文件。
 
