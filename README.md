@@ -159,7 +159,10 @@ a2a inbox ack --all
 uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -e '.[dev]'
 .venv/bin/pytest --cov=a2a                       # unit, fake-gh, file, CLI layers
 A2A_TEST_REPO=org/sandbox .venv/bin/pytest -m smoke   # optional: against a real sandbox repo
+scripts/dev-link.sh                              # point the installed Claude Code plugin at this checkout
 ```
+
+Re-run `scripts/dev-link.sh` after `claude plugin update`, a reinstall, or a version bump: each re-copies the plugin and drops the link.
 
 The design and its reasons live in [CONTEXT.md](CONTEXT.md), [docs/design.md](docs/design.md) and [docs/adr/](docs/adr/).
 
@@ -248,4 +251,4 @@ a2a watch --once         # 第一轮：从现在开始观察
 
 ### 开发
 
-开发和测试命令见上方英文部分。设计说明和决策原因见 [CONTEXT.md](CONTEXT.md)、[docs/design.md](docs/design.md) 和 [docs/adr/](docs/adr/)。
+开发和测试命令见上方英文部分。`scripts/dev-link.sh` 会把已安装的 Claude Code 插件用符号链接指向当前 checkout，修改无需重装即可生效；每次 `claude plugin update`、重装或升级版本号之后需要重新运行。设计说明和决策原因见 [CONTEXT.md](CONTEXT.md)、[docs/design.md](docs/design.md) 和 [docs/adr/](docs/adr/)。
